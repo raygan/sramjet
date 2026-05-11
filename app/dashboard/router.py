@@ -3,7 +3,7 @@
 import app.config
 from app import manifest as mf
 from app.database import get_db
-from app.models import Conflict, Device, SyncEvent
+from app.models import Conflict, Device, SyncEvent, Version
 from app.sync.engine import handle_conflict_resolution
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -46,10 +46,41 @@ async def dashboard_conflicts(request: Request, db: AsyncSession = Depends(get_d
         db_ = await db.get(Device, c.device_b_id)
         enriched.append({"conflict": c, "device_a": da, "device_b": db_})
 
+    # Find files that changed (from another device) since each device's last sync.
+    # These are the most likely candidates for client-side conflicts.
+    devices_result = await db.execute(select(Device).order_by(Device.last_sync.desc()))
+    devices = devices_result.scalars().all()
+
+    client_side = []
+    for device in devices:
+        if not device.last_sync:
+            continue
+        changed_result = await db.execute(
+            select(Version)
+            .where(
+                Version.is_canonical == True,  # noqa: E712
+                Version.received_at > device.last_sync,
+                Version.device_id != device.id,
+            )
+            .order_by(Version.received_at.desc())
+        )
+        changed = changed_result.scalars().all()
+        if changed:
+            client_side.append({"device": device, "files": changed})
+
     return templates.TemplateResponse(
         request, "conflicts.html",
-        context={"conflicts": enriched},
+        context={"conflicts": enriched, "client_side": client_side},
     )
+
+
+@router.post("/files/remove")
+async def dashboard_remove_file(path: str = Form(...)):
+    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+    canonical_dict = mf.to_dict(canonical)
+    canonical_dict.pop(path, None)
+    mf.save_canonical(app.config.CANONICAL_MANIFEST, mf.from_dict(canonical_dict))
+    return RedirectResponse(url="/conflicts", status_code=303)
 
 
 @router.get("/timeline", response_class=HTMLResponse)

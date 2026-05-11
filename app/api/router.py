@@ -162,6 +162,16 @@ async def browse_files(db: AsyncSession = Depends(get_db)):
     return canonical
 
 
+@router.delete("/files/{path:path}", status_code=204)
+async def remove_file_from_canonical(path: str):
+    canonical = mf.load_canonical(CANONICAL_MANIFEST)
+    canonical_dict = mf.to_dict(canonical)
+    if path not in canonical_dict:
+        raise HTTPException(status_code=404)
+    del canonical_dict[path]
+    mf.save_canonical(CANONICAL_MANIFEST, mf.from_dict(canonical_dict))
+
+
 @router.get("/files/{path:path}/history")
 async def file_history(path: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(

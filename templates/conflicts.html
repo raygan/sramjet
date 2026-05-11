@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block title %} — Conflicts{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Conflict Queue</h1>
+<h1 class="text-2xl font-bold mb-6">Conflicts</h1>
+
+{# ── Server-detected conflicts ─────────────────────────────────────────── #}
+<h2 class="text-lg font-semibold mb-3">Conflict Queue</h2>
 
 {% if not conflicts %}
-<p class="text-gray-500">No unresolved conflicts.</p>
+<p class="text-gray-500 mb-8">No unresolved conflicts.</p>
 {% endif %}
 
 {% for item in conflicts %}
@@ -48,4 +51,38 @@
   </div>
 </div>
 {% endfor %}
+
+{# ── Client-side conflict resolution ──────────────────────────────────── #}
+{% if client_side %}
+<h2 class="text-lg font-semibold mt-8 mb-2">Likely Client-Side Conflicts</h2>
+<p class="text-sm text-gray-500 mb-4">
+  These files changed on the server (from another device) since each device's last successful sync.
+  If RetroArch reported "finished with conflicts" on a device, the conflicting file is likely in this list.
+</p>
+
+{% for item in client_side %}
+<div class="bg-white rounded shadow mb-4 p-4">
+  <div class="text-sm font-semibold mb-3">{{ item.device.display_name }}</div>
+  {% for v in item.files %}
+  <div class="border-t pt-3 mt-3 first:border-t-0 first:pt-0 first:mt-0">
+    <div class="font-mono text-sm text-gray-700 mb-2 break-all">{{ v.file_path }}</div>
+    <div class="flex gap-3 flex-wrap items-center">
+      <span class="text-xs text-gray-400">
+        To keep server version: delete this file from {{ item.device.display_name }} and re-sync.
+      </span>
+      <form method="post" action="/files/remove">
+        <input type="hidden" name="path" value="{{ v.file_path }}">
+        <button
+          class="bg-amber-600 text-white px-3 py-1.5 rounded text-xs hover:bg-amber-700"
+          onclick="return confirm('Remove {{ v.file_path | replace("'", "\\'") }} from canonical? The device\'s local version will become canonical on next sync.')">
+          Remove from canonical (keep local)
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+
 {% endblock %}
