@@ -54,7 +54,7 @@
 
 {# ── Client-side conflict resolution ──────────────────────────────────── #}
 {% if client_side %}
-<h2 class="text-lg font-semibold mt-8 mb-2">Likely Client-Side Conflicts</h2>
+<h2 class="text-lg font-semibold mt-8 mb-2">Possible Client-Side Conflicts</h2>
 <p class="text-sm text-gray-500 mb-4">
   These files changed on the server (from another device) since each device's last successful sync.
   If RetroArch reported "finished with conflicts" on a device, the conflicting file is likely in this list.
@@ -67,17 +67,20 @@
   <div class="border-t pt-3 mt-3 first:border-t-0 first:pt-0 first:mt-0">
     <div class="font-mono text-sm text-gray-700 mb-2 break-all">{{ v.file_path }}</div>
     <div class="flex gap-3 flex-wrap items-center">
-      <span class="text-xs text-gray-400">
+      <div class="text-xs text-gray-400 mb-1">
         To keep server version: delete this file from {{ item.device.display_name }} and re-sync.
-      </span>
-      <form method="post" action="/files/remove">
-        <input type="hidden" name="path" value="{{ v.file_path }}">
-        <button
-          class="bg-amber-600 text-white px-3 py-1.5 rounded text-xs hover:bg-amber-700"
-          onclick="return confirm('Remove {{ v.file_path | replace("'", "\\'") }} from canonical? The device\'s local version will become canonical on next sync.')">
-          Remove from canonical (keep local)
-        </button>
-      </form>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-gray-400">
+        To keep local (client) version:
+        <form method="post" action="/files/remove">
+          <input type="hidden" name="path" value="{{ v.file_path }}">
+          <button
+            class="bg-amber-600 text-white px-3 py-1.5 rounded text-xs hover:bg-amber-700"
+            onclick="return confirm('Remove {{ v.file_path | replace("'", "\\'") }} from canonical? The device\'s local version will become canonical on next sync.')">
+            Remove from canonical
+          </button>
+        </form>
+      </div>
     </div>
   </div>
   {% endfor %}
