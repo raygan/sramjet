@@ -170,6 +170,11 @@ async def handle_manifest_upload(
     await _apply_retention(db, new_canonical)
     device.last_sync = now
     sync_event.finished_at = now
+    # Record the canonical state this device successfully synced to.
+    # This is used for conflict detection on future uploads — only update
+    # on sync completion, not on manifest GET, so offline changes made
+    # before fetching the manifest are correctly detected as conflicts.
+    save_last_fetched_manifest(device.name, new_canonical)
 
 
 async def handle_conflict_resolution(

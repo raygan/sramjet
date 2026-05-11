@@ -30,7 +30,6 @@ from app.sync.engine import (
     handle_file_delete,
     handle_file_upload,
     handle_manifest_upload,
-    save_last_fetched_manifest,
 )
 from app.sync.events import get_open_event, get_or_create_device, open_sync_event
 from fastapi import APIRouter, Depends, Request, Response
@@ -107,7 +106,6 @@ async def _serve_manifest(device_name: str, db: AsyncSession) -> Response:
     # Record what canonical this device has seen — used later to detect clean advances
     device, _ = await get_or_create_device(db, device_name)
     await db.commit()
-    save_last_fetched_manifest(device_name, canonical)
     return Response(content=mf.serialize(canonical), media_type="application/json")
 
 
