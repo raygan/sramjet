@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %} — {{ path }}{% endblock %}
+{% block content %}
+<div class="mb-4">
+  <a href="/files" class="text-sm text-blue-600 hover:underline">← Files</a>
+</div>
+<h1 class="text-xl font-bold font-mono break-all mb-6">{{ path }}</h1>
+
+{% if not versions %}
+<p class="text-gray-500">No version history found.</p>
+{% else %}
+<div class="bg-white rounded shadow divide-y">
+{% for item in versions %}
+{% set v = item.version %}
+{% set device = item.device %}
+<div class="px-4 py-3 flex items-center justify-between gap-4">
+  <div class="min-w-0">
+    <div class="flex items-center gap-2 mb-1">
+      {% if v.is_canonical %}
+      <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">current</span>
+      {% endif %}
+      <span class="text-xs text-gray-400">{{ v.received_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+      <span class="text-xs text-gray-500">{{ device.display_name if device else 'unknown' }}</span>
+    </div>
+    <div class="font-mono text-xs text-gray-500">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
+  </div>
+  {% if not v.is_canonical %}
+  <form method="post" action="/files/{{ path }}/revert/{{ v.id }}" class="shrink-0">
+    <button
+      class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-700"
+      onclick="return confirm('Revert {{ path | replace("'", "\\'") }} to this version? All devices will receive this version on next sync.')">
+      Revert
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

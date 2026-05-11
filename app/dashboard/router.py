@@ -3,7 +3,7 @@
 import app.config
 from app import manifest as mf
 from app.database import get_db
-from app.models import Conflict, Device, SyncEvent, Version
+from app.models import Conflict, Device, SyncEvent, SyncEventFile, Version
 from app.sync.engine import handle_conflict_resolution
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -94,7 +94,13 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
     enriched = []
     for event in events:
         device = await db.get(Device, event.device_id)
-        enriched.append({"event": event, "device": device})
+        files_result = await db.execute(
+            select(SyncEventFile)
+            .where(SyncEventFile.sync_event_id == event.id)
+            .order_by(SyncEventFile.file_path)
+        )
+        files = files_result.scalars().all()
+        enriched.append({"event": event, "device": device, "files": files})
 
     return templates.TemplateResponse(
         request, "timeline.html",
@@ -120,6 +126,54 @@ async def dashboard_files(request: Request):
         request, "files.html",
         context={"files": canonical},
     )
+
+
+@router.get("/files/{path:path}", response_class=HTMLResponse)
+async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Version)
+        .where(Version.file_path == path)
+        .order_by(Version.received_at.desc())
+    )
+    versions = result.scalars().all()
+    if not versions:
+        raise HTTPException(status_code=404)
+
+    enriched = []
+    for v in versions:
+        device = await db.get(Device, v.device_id)
+        enriched.append({"version": v, "device": device})
+
+    return templates.TemplateResponse(
+        request, "file_detail.html",
+        context={"path": path, "versions": enriched},
+    )
+
+
+@router.post("/files/{path:path}/revert/{version_id}")
+async def dashboard_revert_file(path: str, version_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Version).where(Version.id == version_id, Version.file_path == path)
+    )
+    version = result.scalar_one_or_none()
+    if version is None:
+        raise HTTPException(status_code=404)
+
+    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+    canonical_dict = mf.to_dict(canonical)
+    if version.hash == "":
+        canonical_dict.pop(path, None)
+    else:
+        canonical_dict[path] = version.hash
+
+    mf.save_canonical(app.config.CANONICAL_MANIFEST, mf.from_dict(canonical_dict))
+
+    all_versions = await db.execute(select(Version).where(Version.file_path == path))
+    for v in all_versions.scalars().all():
+        v.is_canonical = v.id == version_id
+
+    await db.commit()
+    return RedirectResponse(url=f"/files/{path}", status_code=303)
 
 
 @router.post("/conflicts/{conflict_id}/resolve")

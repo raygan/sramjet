@@ -9,10 +9,10 @@
 
 <div class="bg-white rounded shadow divide-y">
 {% for entry in files %}
-<div class="px-4 py-2 flex justify-between items-center{% if entry.hash == '' %} opacity-40{% endif %}">
+<a href="/files/{{ entry.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50{% if entry.hash == '' %} opacity-40{% endif %}">
   <span class="font-mono text-sm break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.path }}</span>
   <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
-</div>
+</a>
 {% endfor %}
 </div>
 {% endblock %}
