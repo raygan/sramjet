@@ -7,9 +7,12 @@ Conflict detection logic:
   the current canonical hash for this file, the upload is a clean advance.
 """
 
+import logging
 from datetime import datetime, timezone
 
 import app.config
+
+log = logging.getLogger(__name__)
 from app import manifest as mf
 from app.models import Conflict, Device, ManifestSnapshot, StoredFile, SyncEvent, SyncEventFile, Version
 from app.store import compute_md5, store_blob
@@ -61,6 +64,12 @@ async def handle_file_upload(
     # by looking at what they last fetched from us.
     device_last_known_hash = _get_device_last_known_hash(device.name, file_path)
 
+    log.info(
+        "conflict-check device=%s file=%s incoming=%s canonical=%s last_known=%s",
+        device.name, file_path, incoming_hash[:8], canonical_hash[:8],
+        device_last_known_hash[:8] if device_last_known_hash else None,
+    )
+
     if device_last_known_hash == canonical_hash:
         # Device fetched the current canonical and is advancing it — clean update
         await _accept_as_canonical(db, device, file_path, incoming_hash, data, now, sync_event)
@@ -74,6 +83,7 @@ async def handle_file_upload(
         return incoming_hash
 
     # Both devices made independent changes since the last common state — genuine conflict
+    log.info("conflict device=%s file=%s → recording conflict", device.name, file_path)
     await store_blob(data)
     conflict_device_result = await db.execute(
         select(Device).where(Device.id != device.id)
