@@ -15,10 +15,14 @@ tasks/task_cloudsync.c):
     enabling clean-advance vs. conflict detection on subsequent uploads.
 """
 
+import logging
+
 import app.config
 from app import manifest as mf
 from app.database import get_db
 from app.models import Device
+
+log = logging.getLogger(__name__)
 from app.store import read_blob
 from app.sync.engine import (
     ActiveConflictsError,
@@ -87,6 +91,7 @@ async def webdav_get(
 
     device, _ = await get_or_create_device(db, device_name)
     sync_event = await get_open_event(db, device.id)
+    log.info("GET %s — device=%s open_event=%s", path, device_name, sync_event.id if sync_event else None)
     if sync_event is not None:
         sync_event.files_downloaded += 1
         await db.commit()
