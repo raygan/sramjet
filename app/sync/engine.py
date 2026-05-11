@@ -150,7 +150,9 @@ async def handle_manifest_upload(
     for version in pending_versions:
         version.is_canonical = True
         if version.hash == "":
-            canonical_dict.pop(version.file_path, None)
+            # Keep the entry with hash="" so other devices see the deletion
+            # signal in the manifest and delete locally, rather than re-uploading.
+            canonical_dict[version.file_path] = ""
         else:
             canonical_dict[version.file_path] = version.hash
 
