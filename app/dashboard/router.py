@@ -4,8 +4,9 @@ import app.config
 from app import manifest as mf
 from app.database import get_db
 from app.models import Conflict, Device, SyncEvent
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from app.sync.engine import handle_conflict_resolution
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,3 +89,22 @@ async def dashboard_files(request: Request):
         request, "files.html",
         context={"files": canonical},
     )
+
+
+@router.post("/conflicts/{conflict_id}/resolve")
+async def dashboard_resolve_conflict(
+    conflict_id: int,
+    winning_hash: str = Form(...),
+    db=Depends(get_db),
+):
+    result = await db.execute(select(Conflict).where(Conflict.id == conflict_id))
+    conflict = result.scalar_one_or_none()
+    if conflict is None:
+        raise HTTPException(status_code=404)
+    if conflict.resolved_at is not None:
+        raise HTTPException(status_code=409, detail="Already resolved")
+    if winning_hash not in (conflict.hash_a, conflict.hash_b, conflict.canonical_hash):
+        raise HTTPException(status_code=400, detail="Invalid winning_hash")
+    await handle_conflict_resolution(db, conflict, winning_hash)
+    await db.commit()
+    return RedirectResponse(url="/conflicts", status_code=303)

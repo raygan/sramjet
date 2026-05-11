@@ -27,19 +27,19 @@
   </div>
 
   <div class="flex gap-3 flex-wrap">
-    <form method="post" action="/api/conflicts/{{ c.id }}/resolve">
+    <form method="post" action="/conflicts/{{ c.id }}/resolve">
       <input type="hidden" name="winning_hash" value="{{ c.hash_a }}">
       <button class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
         Keep {{ da.display_name if da else 'Device A' }}
       </button>
     </form>
-    <form method="post" action="/api/conflicts/{{ c.id }}/resolve">
+    <form method="post" action="/conflicts/{{ c.id }}/resolve">
       <input type="hidden" name="winning_hash" value="{{ c.hash_b }}">
       <button class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">
         Keep {{ db.display_name if db else 'Device B' }}
       </button>
     </form>
-    <form method="post" action="/api/conflicts/{{ c.id }}/resolve">
+    <form method="post" action="/conflicts/{{ c.id }}/resolve">
       <input type="hidden" name="winning_hash" value="{{ c.canonical_hash }}">
       <button class="bg-gray-500 text-white px-4 py-2 rounded text-sm hover:bg-gray-600">
         Revert to canonical
