@@ -2,13 +2,15 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Install dependencies first — separate layer so rebuilds are fast when only code changes
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir fastapi "uvicorn[standard]" sqlalchemy aiosqlite \
+    jinja2 python-multipart lxml aiofiles
 
+# Copy source and install the package itself (no-deps since already installed above)
 COPY app/ app/
 COPY templates/ templates/
-
-VOLUME ["/data"]
+RUN pip install --no-cache-dir --no-deps .
 
 ENV DATA_DIR=/data
 ENV SYSTEM_VERSION_LIMIT=5
