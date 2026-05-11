@@ -148,6 +148,11 @@ async def handle_manifest_upload(
 
     pending_versions = await _get_pending_versions_for_device(db, device.id)
     for version in pending_versions:
+        prev = await db.execute(
+            select(Version).where(Version.file_path == version.file_path, Version.is_canonical == True)  # noqa: E712
+        )
+        for old in prev.scalars().all():
+            old.is_canonical = False
         version.is_canonical = True
         if version.hash == "":
             # Keep the entry with hash="" so other devices see the deletion
@@ -315,6 +320,12 @@ async def _accept_as_canonical(
     canonical_dict = mf.to_dict(canonical)
     canonical_dict[file_path] = hash
     mf.save_canonical(app.config.CANONICAL_MANIFEST, mf.from_dict(canonical_dict))
+
+    prev = await db.execute(
+        select(Version).where(Version.file_path == file_path, Version.is_canonical == True)  # noqa: E712
+    )
+    for old in prev.scalars().all():
+        old.is_canonical = False
 
     version = Version(
         file_path=file_path,
