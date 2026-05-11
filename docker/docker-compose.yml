@@ -6,7 +6,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - /mnt/user/appdata/retroarch-sync:/data
+      - /mnt/user/docker/appdata/retroarch-sync:/data
     environment:
       - SYSTEM_VERSION_LIMIT=5
       - THUMBNAIL_VERSION_LIMIT=3
