@@ -91,10 +91,11 @@ async def webdav_get(
 
     device, _ = await get_or_create_device(db, device_name)
     sync_event = await get_open_event(db, device.id)
-    log.info("GET %s — device=%s open_event=%s", path, device_name, sync_event.id if sync_event else None)
-    if sync_event is not None:
-        sync_event.files_downloaded += 1
-        await db.commit()
+    if sync_event is None:
+        sync_event = await open_sync_event(db, device)
+    log.info("GET %s — device=%s open_event=%s", path, device_name, sync_event.id)
+    sync_event.files_downloaded += 1
+    await db.commit()
 
     return Response(content=data, media_type="application/octet-stream")
 
