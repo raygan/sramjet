@@ -66,7 +66,14 @@ async def handle_file_upload(
         await _accept_as_canonical(db, device, file_path, incoming_hash, data, now, sync_event)
         return incoming_hash
 
-    # Device didn't know about (or hasn't fetched) the current canonical — conflict
+    if incoming_hash == device_last_known_hash:
+        # Device is re-uploading the same version it had at its last successful sync.
+        # Canonical has since moved forward (another device made progress). This is a
+        # stale upload, not new progress — silently ignore it so the device can download
+        # the canonical version on this sync without a conflict.
+        return incoming_hash
+
+    # Both devices made independent changes since the last common state — genuine conflict
     await store_blob(data)
     conflict_device_result = await db.execute(
         select(Device).where(Device.id != device.id)
