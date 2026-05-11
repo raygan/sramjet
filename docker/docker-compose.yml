@@ -1,12 +1,12 @@
 services:
-  retroarch-sync:
+  sramjet:
     build:
       context: ..
       dockerfile: docker/Dockerfile
     ports:
       - "8088:8080"
     volumes:
-      - /mnt/user/docker/appdata/retroarch-sync:/data
+      - /mnt/user/docker/appdata/sramjet:/data
     environment:
       - SYSTEM_VERSION_LIMIT=5
       - THUMBNAIL_VERSION_LIMIT=3

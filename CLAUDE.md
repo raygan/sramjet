@@ -1,10 +1,10 @@
-# RetroArch Sync Server — Development Guide
+# SRAMjet — Development Guide
 
 ## Project Summary
 
 A self-hosted WebDAV server acting as a smart RetroArch cloud sync backend. Supports per-device routing, conflict detection, file versioning, content-addressable storage, and a minimal web dashboard.
 
-**Spec**: `retroarch-sync-server-spec.md`  
+**Spec**: `sramjet-spec.md`  
 **Stack**: FastAPI + SQLite (SQLAlchemy async) + Jinja2 + Tailwind CSS + Docker
 
 ## Development Phases

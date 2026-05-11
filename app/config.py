@@ -11,7 +11,7 @@ CONFLICTS_DIR = DATA_DIR / "conflicts"
 
 CANONICAL_MANIFEST = MANIFESTS_DIR / "canonical.json"
 
-DATABASE_URL = f"sqlite+aiosqlite:///{DATA_DIR}/retroarch-sync.db"
+DATABASE_URL = f"sqlite+aiosqlite:///{DATA_DIR}/sramjet.db"
 
 # Versioning retention limits (number of old versions kept)
 SYSTEM_VERSION_LIMIT = int(os.environ.get("SYSTEM_VERSION_LIMIT", "5"))

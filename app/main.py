@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="RetroArch Sync Server", lifespan=lifespan)
+app = FastAPI(title="SRAMjet", lifespan=lifespan)
 
 app.include_router(webdav_router)
 app.include_router(api_router)
