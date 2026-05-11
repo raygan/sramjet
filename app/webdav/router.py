@@ -30,6 +30,7 @@ from app.sync.engine import (
     handle_file_delete,
     handle_file_upload,
     handle_manifest_upload,
+    save_last_fetched_manifest,
 )
 from app.sync.events import get_open_event, get_or_create_device, open_sync_event
 from fastapi import APIRouter, Depends, Request, Response
@@ -103,9 +104,14 @@ async def _serve_manifest(device_name: str, db: AsyncSession) -> Response:
     canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
     if not canonical:
         return Response(status_code=404)
-    # Record what canonical this device has seen — used later to detect clean advances
     device, _ = await get_or_create_device(db, device_name)
     await db.commit()
+    # Seed last_fetched_manifest on first contact so uploads made after the
+    # initial download are treated as clean advances, not conflicts.
+    # Only done once — after that it's updated at sync completion only.
+    manifest_path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
+    if not manifest_path.exists():
+        save_last_fetched_manifest(device_name, canonical)
     return Response(content=mf.serialize(canonical), media_type="application/json")
 
 
