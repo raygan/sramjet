@@ -205,6 +205,35 @@ async def handle_conflict_resolution(
     conflict.resolved_at = now
     conflict.resolved_by_hash = winning_hash
 
+    # Remove the conflicted file from the losing device(s)' last_fetched_manifest.
+    # This ensures their next upload of the losing hash fails the conflict check
+    # (device_last_known_hash = None ≠ canonical_hash) and gets rejected with 409,
+    # forcing them to delete their local file and download the winner instead.
+    if winning_hash == conflict.hash_a:
+        losing_ids = [conflict.device_b_id]
+    elif winning_hash == conflict.hash_b:
+        losing_ids = [conflict.device_a_id]
+    else:
+        # canonical_hash won — both device versions lost
+        losing_ids = [conflict.device_a_id, conflict.device_b_id]
+
+    for device_id in losing_ids:
+        device_result = await db.execute(select(Device).where(Device.id == device_id))
+        device = device_result.scalar_one_or_none()
+        if device:
+            _invalidate_last_fetched_entry(device.name, conflict.file_path)
+
+
+def _invalidate_last_fetched_entry(device_name: str, file_path: str) -> None:
+    """Remove one file from a device's last_fetched_manifest so the next upload
+    of that file is treated as unknown and triggers conflict detection."""
+    path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
+    if not path.exists():
+        return
+    manifest_dict = mf.to_dict(mf.load_canonical(path))
+    manifest_dict.pop(file_path, None)
+    mf.save_canonical(path, mf.from_dict(manifest_dict))
+
 
 def save_last_fetched_manifest(device_name: str, manifest: mf.Manifest) -> None:
     """Record the canonical manifest a device fetched, so we can detect clean advances."""
