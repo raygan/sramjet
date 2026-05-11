@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %} — Timeline{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Timeline</h1>
+
+{% if not events %}
+<p class="text-gray-500">No sync events yet.</p>
+{% endif %}
+
+{% for item in events %}
+{% set event = item.event %}
+{% set device = item.device %}
+<div class="bg-white rounded shadow mb-3 p-4">
+  <div class="flex justify-between items-start mb-1">
+    <span class="font-medium">{{ device.display_name if device else 'Unknown' }}</span>
+    <span class="text-xs text-gray-400">{{ event.started_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+  </div>
+  <div class="text-sm text-gray-500 flex gap-4">
+    <span>↑ {{ event.files_uploaded }} uploaded</span>
+    <span>↓ {{ event.files_downloaded }} downloaded</span>
+    {% if event.had_conflicts %}
+    <span class="text-red-600 font-medium">⚠ conflicts</span>
+    {% endif %}
+    {% if not event.finished_at and (now - event.started_at).total_seconds() < 60 %}
+    <span class="text-yellow-600">in progress</span>
+    {% elif not event.finished_at %}
+    <span class="text-gray-400">no changes</span>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

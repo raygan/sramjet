@@ -1,0 +1,193 @@
+"""WebDAV endpoints for RetroArch cloud sync.
+
+Based on RetroArch source analysis (network/cloud_sync/webdav.c,
+tasks/task_cloudsync.c):
+
+  - Verbs used: OPTIONS, GET, PUT, DELETE, MKCOL, MOVE
+  - PROPFIND is NOT used — no XML/directory listing needed
+  - Manifest filename: manifest.server
+  - 404 on GET = success (file not found)
+  - 405 on MKCOL = success (directory exists)
+  - 409 on manifest PUT = conflicts exist (triggers RetroArch failure report)
+  - OPTIONS on /sync/{device}/ = sync begin — opens a new SyncEvent
+  - PUT manifest.server = sync end — closes the SyncEvent
+  - GET manifest.server records what canonical the device has seen,
+    enabling clean-advance vs. conflict detection on subsequent uploads.
+"""
+
+import app.config
+from app import manifest as mf
+from app.database import get_db
+from app.models import Device
+from app.store import read_blob
+from app.sync.engine import (
+    ActiveConflictsError,
+    ConflictError,
+    handle_file_delete,
+    handle_file_upload,
+    handle_manifest_upload,
+    save_last_fetched_manifest,
+)
+from app.sync.events import get_open_event, get_or_create_device, open_sync_event
+from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+router = APIRouter(prefix="/sync/{device_name}")
+
+MANIFEST_FILENAME = "manifest.server"
+
+
+def _is_manifest(path: str) -> bool:
+    return path.strip("/") == MANIFEST_FILENAME
+
+
+# ─── OPTIONS — sync begin ─────────────────────────────────────────────────────
+
+
+@router.options("/{path:path}")
+@router.options("/")
+async def webdav_options(
+    device_name: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    device, _ = await get_or_create_device(db, device_name)
+    await open_sync_event(db, device)
+    await db.commit()
+    return Response(
+        status_code=200,
+        headers={"DAV": "1", "Allow": "OPTIONS, GET, PUT, DELETE, MKCOL, MOVE"},
+    )
+
+
+# ─── GET — download file or manifest ─────────────────────────────────────────
+
+
+@router.get("/{path:path}")
+async def webdav_get(
+    device_name: str,
+    path: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    if _is_manifest(path):
+        return await _serve_manifest(device_name, db)
+
+    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+    canonical_dict = mf.to_dict(canonical)
+
+    if path not in canonical_dict:
+        return Response(status_code=404)
+
+    file_hash = canonical_dict[path]
+    if mf.is_deleted(file_hash):
+        return Response(status_code=404)
+
+    data = await read_blob(file_hash)
+    if data is None:
+        return Response(status_code=404)
+
+    return Response(content=data, media_type="application/octet-stream")
+
+
+async def _serve_manifest(device_name: str, db: AsyncSession) -> Response:
+    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+    if not canonical:
+        return Response(status_code=404)
+    # Record what canonical this device has seen — used later to detect clean advances
+    device, _ = await get_or_create_device(db, device_name)
+    await db.commit()
+    save_last_fetched_manifest(device_name, canonical)
+    return Response(content=mf.serialize(canonical), media_type="application/json")
+
+
+# ─── PUT — upload file or manifest ───────────────────────────────────────────
+
+
+@router.put("/{path:path}")
+async def webdav_put(
+    device_name: str,
+    path: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    data = await request.body()
+    device, _ = await get_or_create_device(db, device_name)
+
+    if _is_manifest(path):
+        return await _put_manifest(db, device, data)
+
+    sync_event = await get_open_event(db, device.id)
+    if sync_event is None:
+        sync_event = await open_sync_event(db, device)
+
+    try:
+        await handle_file_upload(db, device, path, data, sync_event)
+    except ConflictError:
+        await db.commit()
+        return Response(status_code=409, content="Conflict")
+
+    await db.commit()
+    return Response(status_code=201)
+
+
+async def _put_manifest(db: AsyncSession, device: Device, data: bytes) -> Response:
+    sync_event = await get_open_event(db, device.id)
+    if sync_event is None:
+        sync_event = await open_sync_event(db, device)
+
+    try:
+        await handle_manifest_upload(db, device, data, sync_event)
+    except ActiveConflictsError as exc:
+        await db.commit()
+        return Response(status_code=409, content=f"Conflicts: {', '.join(exc.paths)}")
+
+    await db.commit()
+    return Response(status_code=201)
+
+
+# ─── DELETE ───────────────────────────────────────────────────────────────────
+
+
+@router.delete("/{path:path}")
+async def webdav_delete(
+    device_name: str,
+    path: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    if _is_manifest(path):
+        return Response(status_code=403)
+
+    device, _ = await get_or_create_device(db, device_name)
+    sync_event = await get_open_event(db, device.id)
+    if sync_event is None:
+        sync_event = await open_sync_event(db, device)
+
+    await handle_file_delete(db, device, path, sync_event)
+    await db.commit()
+    return Response(status_code=204)
+
+
+# ─── MKCOL — always succeeds (405 = already exists, which RetroArch accepts) ─
+
+
+@router.api_route("/{path:path}", methods=["MKCOL"])
+async def webdav_mkcol(device_name: str, path: str) -> Response:
+    return Response(status_code=405)
+
+
+# ─── MOVE — soft-delete (RetroArch's non-destructive delete mode) ─────────────
+
+
+@router.api_route("/{path:path}", methods=["MOVE"])
+async def webdav_move(
+    device_name: str,
+    path: str,
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    device, _ = await get_or_create_device(db, device_name)
+    sync_event = await get_open_event(db, device.id)
+    if sync_event is None:
+        sync_event = await open_sync_event(db, device)
+
+    await handle_file_delete(db, device, path, sync_event)
+    await db.commit()
+    return Response(status_code=201)

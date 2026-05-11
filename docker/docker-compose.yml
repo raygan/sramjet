@@ -1,0 +1,13 @@
+services:
+  retroarch-sync:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - /mnt/user/appdata/retroarch-sync:/data
+    environment:
+      - SYSTEM_VERSION_LIMIT=5
+      - THUMBNAIL_VERSION_LIMIT=3
+    restart: unless-stopped

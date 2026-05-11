@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %} — Files{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Canonical File Store</h1>
+
+{% if not files %}
+<p class="text-gray-500">No files in canonical store yet.</p>
+{% endif %}
+
+<div class="bg-white rounded shadow divide-y">
+{% for entry in files %}
+<div class="px-4 py-2 flex justify-between items-center">
+  <span class="font-mono text-sm break-all">{{ entry.path }}</span>
+  <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{{ entry.hash[:8] }}…</span>
+</div>
+{% endfor %}
+</div>
+{% endblock %}
