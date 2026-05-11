@@ -231,6 +231,25 @@ async def handle_conflict_resolution(
             _invalidate_last_fetched_entry(device.name, conflict.file_path)
 
 
+def record_file_as_fetched(device_name: str, file_path: str, file_hash: str) -> None:
+    """Record that a device just downloaded file_path at file_hash.
+
+    After a successful download the device "knows" the canonical hash for
+    this file, so any new progress uploaded later is a clean advance, not
+    a conflict.  We only update the single entry rather than the whole
+    manifest to avoid clobbering other files' tracking state.
+    """
+    path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
+    if path.exists():
+        manifest_dict = mf.to_dict(mf.load_canonical(path))
+    else:
+        manifest_dict = {}
+    if manifest_dict.get(file_path) == file_hash:
+        return
+    manifest_dict[file_path] = file_hash
+    mf.save_canonical(path, mf.from_dict(manifest_dict))
+
+
 def _invalidate_last_fetched_entry(device_name: str, file_path: str) -> None:
     """Remove one file from a device's last_fetched_manifest so the next upload
     of that file is treated as unknown and triggers conflict detection."""

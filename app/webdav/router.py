@@ -30,6 +30,7 @@ from app.sync.engine import (
     handle_file_delete,
     handle_file_upload,
     handle_manifest_upload,
+    record_file_as_fetched,
     save_last_fetched_manifest,
 )
 from app.sync.events import get_open_event, get_or_create_device, open_sync_event
@@ -94,6 +95,7 @@ async def webdav_get(
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
     log.info("GET %s — device=%s open_event=%s", path, device_name, sync_event.id)
+    record_file_as_fetched(device_name, path, file_hash)
     sync_event.files_downloaded += 1
     await db.commit()
 
