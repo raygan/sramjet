@@ -118,8 +118,8 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
     sections = []
     def add_to_section(title, item):
         if not sections or sections[-1]["title"] != title:
-            sections.append({"title": title, "items": []})
-        sections[-1]["items"].append(item)
+            sections.append({"title": title, "events": []})
+        sections[-1]["events"].append(item)
 
     for item in items:
         t = item["event_utc"]

@@ -10,7 +10,7 @@
 {% for section in sections %}
 <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2 first:mt-0">{{ section.title }}</h2>
 
-{% for item in section.items %}
+{% for item in section.events %}
 {% set event = item.event %}
 {% set device = item.device %}
 {% set files = item.files %}
