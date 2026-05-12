@@ -114,14 +114,51 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
             "finished_utc": finished_utc,
         })
 
-    # Group into sections
+    # Merge events from the same device that started within 10 seconds of each
+    # other — RetroArch's concurrent connections often split one logical sync
+    # across multiple DB events.
+    merged = []
+    for item in items:
+        if (
+            merged
+            and merged[-1]["device"] and item["device"]
+            and merged[-1]["device"].id == item["device"].id
+            and abs((merged[-1]["event_utc"] - item["event_utc"]).total_seconds()) <= 10
+        ):
+            prev = merged[-1]
+            # Merge file lists and PNG maps
+            combined_files = list(prev["files"]) + list(item["files"])
+            combined_file_paths = {f.file_path for f in combined_files}
+            combined_png_map = {}
+            combined_paired = set()
+            for f in combined_files:
+                if f.file_path.endswith(".png") and f.action == "uploaded":
+                    state_path = f.file_path[:-4]
+                    if state_path in combined_file_paths:
+                        combined_png_map[state_path] = f.hash
+                        combined_paired.add(f.file_path)
+            prev["files"] = combined_files
+            prev["png_map"] = combined_png_map
+            prev["paired_png_paths"] = combined_paired
+            prev["files_uploaded"] = sum(1 for f in combined_files if f.action == "uploaded" and f.file_path not in combined_paired)
+            prev["files_downloaded"] = prev.get("files_downloaded", 0) + item.get("files_downloaded", 0)
+            # Keep the finished event's stats if one is closed
+            if item["finished_utc"] and not prev["finished_utc"]:
+                prev["finished_utc"] = item["finished_utc"]
+        else:
+            item = dict(item)
+            item["files_uploaded"] = item["event"].files_uploaded
+            item["files_downloaded"] = item["event"].files_downloaded
+            merged.append(item)
+
+    # Group into timeline sections
     sections = []
     def add_to_section(title, item):
         if not sections or sections[-1]["title"] != title:
             sections.append({"title": title, "events": []})
         sections[-1]["events"].append(item)
 
-    for item in items:
+    for item in merged:
         t = item["event_utc"]
         if t >= just_now_cutoff:
             add_to_section("Just Now", item)

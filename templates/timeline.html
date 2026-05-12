@@ -22,8 +22,8 @@
     <span class="text-xs text-gray-400">{{ item.started_at_fmt }}</span>
   </div>
   <div class="text-sm text-gray-500 flex gap-4 mb-2">
-    <span>↑ {{ event.files_uploaded }} uploaded</span>
-    <span>↓ {{ event.files_downloaded }} downloaded</span>
+    <span>↑ {{ item.files_uploaded }} uploaded</span>
+    <span>↓ {{ item.files_downloaded }} downloaded</span>
     {% if event.had_conflicts %}
     <span class="text-red-600 font-medium">⚠ conflicts</span>
     {% endif %}
