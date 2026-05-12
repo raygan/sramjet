@@ -39,14 +39,22 @@ async def handle_file_upload(
     now = datetime.now(timezone.utc)
     incoming_hash = compute_md5(data)
 
+    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+    canonical_dict = mf.to_dict(canonical)
+    canonical_hash = canonical_dict.get(file_path)
+
+    # Force-accept: treat this sync like a fresh first sync, bypassing all
+    # conflict detection. Flag is set by the user via the dashboard and cleared
+    # automatically when the device's manifest PUT completes.
+    if is_force_accept(device.name):
+        if canonical_hash != incoming_hash:
+            await _accept_as_canonical(db, device, file_path, incoming_hash, data, now, sync_event)
+        return incoming_hash
+
     # Reject if this file is already locked in an unresolved conflict
     existing_conflict = await _get_active_conflict(db, file_path)
     if existing_conflict is not None:
         raise ConflictError(file_path)
-
-    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
-    canonical_dict = mf.to_dict(canonical)
-    canonical_hash = canonical_dict.get(file_path)
 
     if canonical_hash is None:
         # No prior canonical for this path — first upload wins
@@ -184,6 +192,7 @@ async def handle_manifest_upload(
     await _apply_retention(db, new_canonical)
     device.last_sync = now
     sync_event.finished_at = now
+    clear_force_accept(device.name)
     # Record the canonical state this device successfully synced to.
     # This is used for conflict detection on future uploads — only update
     # on sync completion, not on manifest GET, so offline changes made
@@ -236,6 +245,22 @@ async def handle_conflict_resolution(
         device = device_result.scalar_one_or_none()
         if device:
             _invalidate_last_fetched_entry(device.name, conflict.file_path)
+
+
+def is_force_accept(device_name: str) -> bool:
+    """Return True if the user has requested that this device's next sync be accepted unconditionally."""
+    return (app.config.DEVICES_DIR / device_name / "force_accept").exists()
+
+
+def set_force_accept(device_name: str) -> None:
+    device_dir = app.config.DEVICES_DIR / device_name
+    device_dir.mkdir(parents=True, exist_ok=True)
+    (device_dir / "force_accept").touch()
+
+
+def clear_force_accept(device_name: str) -> None:
+    flag = app.config.DEVICES_DIR / device_name / "force_accept"
+    flag.unlink(missing_ok=True)
 
 
 def record_file_as_fetched(device_name: str, file_path: str, file_hash: str) -> None:

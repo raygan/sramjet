@@ -4,7 +4,7 @@ import app.config
 from app import manifest as mf
 from app.database import get_db
 from app.models import Conflict, Device, SyncEvent, SyncEventFile, Version
-from app.sync.engine import handle_conflict_resolution
+from app.sync.engine import clear_force_accept, handle_conflict_resolution, is_force_accept, set_force_accept
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -46,31 +46,9 @@ async def dashboard_conflicts(request: Request, db: AsyncSession = Depends(get_d
         db_ = await db.get(Device, c.device_b_id)
         enriched.append({"conflict": c, "device_a": da, "device_b": db_})
 
-    # Find files that changed (from another device) since each device's last sync.
-    # These are the most likely candidates for client-side conflicts.
-    devices_result = await db.execute(select(Device).order_by(Device.last_sync.desc()))
-    devices = devices_result.scalars().all()
-
-    client_side = []
-    for device in devices:
-        if not device.last_sync:
-            continue
-        changed_result = await db.execute(
-            select(Version)
-            .where(
-                Version.is_canonical == True,  # noqa: E712
-                Version.received_at > device.last_sync,
-                Version.device_id != device.id,
-            )
-            .order_by(Version.received_at.desc())
-        )
-        changed = changed_result.scalars().all()
-        if changed:
-            client_side.append({"device": device, "files": changed})
-
     return templates.TemplateResponse(
         request, "conflicts.html",
-        context={"conflicts": enriched, "client_side": client_side},
+        context={"conflicts": enriched},
     )
 
 
@@ -112,11 +90,32 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
 async def dashboard_devices(request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Device).order_by(Device.last_sync.desc()))
     devices = result.scalars().all()
+    force_accept_flags = {d.name: is_force_accept(d.name) for d in devices}
 
     return templates.TemplateResponse(
         request, "devices.html",
-        context={"devices": devices},
+        context={"devices": devices, "force_accept_flags": force_accept_flags},
     )
+
+
+@router.post("/devices/{name}/force-accept")
+async def dashboard_force_accept(name: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Device).where(Device.name == name))
+    device = result.scalar_one_or_none()
+    if device is None:
+        raise HTTPException(status_code=404)
+    set_force_accept(name)
+    return RedirectResponse(url="/devices", status_code=303)
+
+
+@router.post("/devices/{name}/cancel-force-accept")
+async def dashboard_cancel_force_accept(name: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Device).where(Device.name == name))
+    device = result.scalar_one_or_none()
+    if device is None:
+        raise HTTPException(status_code=404)
+    clear_force_accept(name)
+    return RedirectResponse(url="/devices", status_code=303)
 
 
 @router.get("/files", response_class=HTMLResponse)
