@@ -63,13 +63,23 @@ async def dashboard_remove_file(path: str = Form(...)):
 
 @router.get("/timeline", response_class=HTMLResponse)
 async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db)):
-    from datetime import datetime, timezone
+    from datetime import datetime, timedelta, timezone
+    tz = app.config.DISPLAY_TZ
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc.astimezone(tz)
+
+    # Section cutoffs (all in UTC for comparison against stored datetimes)
+    just_now_cutoff = now_utc - timedelta(minutes=15)
+    today_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    week_start = (now_local - timedelta(days=now_local.weekday())).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+
     result = await db.execute(
-        select(SyncEvent).order_by(SyncEvent.started_at.desc()).limit(100)
+        select(SyncEvent).order_by(SyncEvent.started_at.desc()).limit(200)
     )
     events = result.scalars().all()
 
-    enriched = []
+    # Build enriched event list with timezone-converted times and PNG pairings
+    items = []
     for event in events:
         device = await db.get(Device, event.device_id)
         files_result = await db.execute(
@@ -79,8 +89,6 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
         )
         files = files_result.scalars().all()
 
-        # Build PNG pairing: {state_path: png_hash} for state files uploaded
-        # alongside a matching .png in the same sync event.
         png_map = {}
         paired_png_paths = set()
         file_paths_in_event = {f.file_path for f in files}
@@ -91,17 +99,43 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
                     png_map[state_path] = f.hash
                     paired_png_paths.add(f.file_path)
 
-        enriched.append({
+        event_utc = event.started_at.replace(tzinfo=timezone.utc)
+        event_local = event_utc.astimezone(tz)
+        finished_utc = event.finished_at.replace(tzinfo=timezone.utc) if event.finished_at else None
+
+        items.append({
             "event": event,
             "device": device,
             "files": files,
             "png_map": png_map,
             "paired_png_paths": paired_png_paths,
+            "started_at_fmt": event_local.strftime("%-m/%-d/%y at %-I:%M:%S %p"),
+            "event_utc": event_utc,
+            "finished_utc": finished_utc,
         })
+
+    # Group into sections
+    sections = []
+    def add_to_section(title, item):
+        if not sections or sections[-1]["title"] != title:
+            sections.append({"title": title, "items": []})
+        sections[-1]["items"].append(item)
+
+    for item in items:
+        t = item["event_utc"]
+        if t >= just_now_cutoff:
+            add_to_section("Just Now", item)
+        elif t >= today_start:
+            add_to_section("Today", item)
+        elif t >= week_start:
+            add_to_section("This Week", item)
+        else:
+            local_t = t.astimezone(tz)
+            add_to_section(local_t.strftime("%B %Y"), item)
 
     return templates.TemplateResponse(
         request, "timeline.html",
-        context={"events": enriched, "now": datetime.now(timezone.utc).replace(tzinfo=None)},
+        context={"sections": sections, "now_utc": now_utc},
     )
 
 

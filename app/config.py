@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 
@@ -29,6 +30,9 @@ LIMITED_HISTORY_DIRS = {
     "system": SYSTEM_VERSION_LIMIT,
     "thumbnails": THUMBNAIL_VERSION_LIMIT,
 }
+
+
+DISPLAY_TZ = ZoneInfo(os.environ.get("DISPLAY_TZ", "America/Chicago"))
 
 
 def ensure_dirs() -> None:

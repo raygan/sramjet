@@ -10,4 +10,6 @@ services:
     environment:
       - SYSTEM_VERSION_LIMIT=5
       - THUMBNAIL_VERSION_LIMIT=3
+      - TZ=America/Chicago
+      - DISPLAY_TZ=America/Chicago
     restart: unless-stopped

@@ -3,20 +3,23 @@
 {% block content %}
 <h1 class="text-2xl font-bold mb-4">Timeline</h1>
 
-{% if not events %}
+{% if not sections %}
 <p class="text-gray-500">No sync events yet.</p>
 {% endif %}
 
-{% for item in events %}
+{% for section in sections %}
+<h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2 first:mt-0">{{ section.title }}</h2>
+
+{% for item in section.items %}
 {% set event = item.event %}
 {% set device = item.device %}
 {% set files = item.files %}
 {% set png_map = item.png_map %}
 {% set paired_png_paths = item.paired_png_paths %}
-<div class="bg-white rounded shadow mb-3 p-4">
+<div class="bg-white rounded shadow mb-2 p-4">
   <div class="flex justify-between items-start mb-1">
     <span class="font-medium">{{ device.display_name if device else 'Unknown' }}</span>
-    <span class="text-xs text-gray-400">{{ event.started_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+    <span class="text-xs text-gray-400">{{ item.started_at_fmt }}</span>
   </div>
   <div class="text-sm text-gray-500 flex gap-4 mb-2">
     <span>↑ {{ event.files_uploaded }} uploaded</span>
@@ -24,9 +27,9 @@
     {% if event.had_conflicts %}
     <span class="text-red-600 font-medium">⚠ conflicts</span>
     {% endif %}
-    {% if not event.finished_at and (now - event.started_at).total_seconds() < 60 %}
+    {% if not item.finished_utc and (now_utc - item.event_utc).total_seconds() < 60 %}
     <span class="text-yellow-600">in progress</span>
-    {% elif not event.finished_at %}
+    {% elif not item.finished_utc %}
     <span class="text-gray-400">no changes</span>
     {% endif %}
   </div>
@@ -78,7 +81,8 @@
           <a href="/files/{{ f.file_path }}" class="font-mono text-gray-600 hover:text-blue-600 hover:underline truncate">{{ f.file_path }}</a>
           {% endif %}
           {% if f.file_path in png_map %}
-          <img src="/api/blobs/{{ png_map[f.file_path] }}" class="h-10 rounded shrink-0" alt="screenshot">
+          <img src="/api/blobs/{{ png_map[f.file_path] }}" class="h-10 rounded shrink-0 cursor-pointer hover:opacity-80" alt="screenshot"
+               onclick="openLightbox(this.src)">
           {% endif %}
         </div>
         {% endif %}
@@ -89,5 +93,6 @@
   </div>
   {% endif %}
 </div>
+{% endfor %}
 {% endfor %}
 {% endblock %}
