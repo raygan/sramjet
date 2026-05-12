@@ -171,6 +171,19 @@ async def serve_blob(hash: str):
     return Response(content=data, media_type="image/png")
 
 
+@router.get("/files/{path:path}/download/{hash}")
+async def download_file_version(path: str, hash: str):
+    data = await read_blob(hash)
+    if data is None:
+        raise HTTPException(status_code=404)
+    filename = path.split("/")[-1]
+    return Response(
+        content=data,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.delete("/files/{path:path}", status_code=204)
 async def remove_file_from_canonical(path: str):
     canonical = mf.load_canonical(CANONICAL_MANIFEST)
