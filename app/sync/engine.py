@@ -154,7 +154,7 @@ async def handle_manifest_upload(
     canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
     canonical_dict = mf.to_dict(canonical)
 
-    pending_versions = await _get_pending_versions_for_device(db, device.id)
+    pending_versions = await _get_pending_versions_for_device(db, device.id, sync_event.started_at)
     for version in pending_versions:
         prev = await db.execute(
             select(Version).where(Version.file_path == version.file_path, Version.is_canonical == True)  # noqa: E712
@@ -324,9 +324,22 @@ async def _get_all_active_conflicts(db: AsyncSession) -> list[Conflict]:
     return list(result.scalars().all())
 
 
-async def _get_pending_versions_for_device(db: AsyncSession, device_id: int) -> list[Version]:
+async def _get_pending_versions_for_device(
+    db: AsyncSession, device_id: int, since: datetime
+) -> list[Version]:
+    """Return versions created during the current sync session that still need promotion.
+
+    Filtering by `since` (the sync event start time) prevents the race condition where
+    _accept_as_canonical decanonizes an old version, making it look like a pending
+    version to the concurrent manifest PUT handler, which would then re-promote it and
+    overwrite the newly accepted canonical.
+    """
     result = await db.execute(
-        select(Version).where(Version.device_id == device_id, Version.is_canonical == False)  # noqa: E712
+        select(Version).where(
+            Version.device_id == device_id,
+            Version.is_canonical == False,  # noqa: E712
+            Version.received_at >= since,
+        )
     )
     return list(result.scalars().all())
 
