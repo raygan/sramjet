@@ -247,15 +247,34 @@ async def handle_conflict_resolution(
             _invalidate_last_fetched_entry(device.name, conflict.file_path)
 
 
+_FORCE_ACCEPT_TTL = 300  # seconds — auto-expires if no manifest PUT comes in
+
+
 def is_force_accept(device_name: str) -> bool:
-    """Return True if the user has requested that this device's next sync be accepted unconditionally."""
-    return (app.config.DEVICES_DIR / device_name / "force_accept").exists()
+    """Return True if Trust Next Sync is active for this device.
+
+    The flag stores the time it was set so it auto-expires after TTL seconds
+    even if no manifest PUT arrives (e.g. download-only syncs).
+    """
+    import time
+    flag = app.config.DEVICES_DIR / device_name / "force_accept"
+    if not flag.exists():
+        return False
+    try:
+        age = time.time() - float(flag.read_text().strip())
+        if age > _FORCE_ACCEPT_TTL:
+            flag.unlink(missing_ok=True)
+            return False
+        return True
+    except (ValueError, OSError):
+        return False
 
 
 def set_force_accept(device_name: str) -> None:
+    import time
     device_dir = app.config.DEVICES_DIR / device_name
     device_dir.mkdir(parents=True, exist_ok=True)
-    (device_dir / "force_accept").touch()
+    (device_dir / "force_accept").write_text(str(time.time()))
 
 
 def clear_force_accept(device_name: str) -> None:
