@@ -212,9 +212,18 @@ async def dashboard_cancel_force_accept(name: str, db: AsyncSession = Depends(ge
 @router.get("/files", response_class=HTMLResponse)
 async def dashboard_files(request: Request):
     canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+
+    # Group by top-level directory; compute display path (path minus first component)
+    grouped: dict[str, list] = {}
+    for entry in canonical:
+        parts = entry["path"].split("/")
+        top = parts[0] if len(parts) > 1 else ""
+        display = "/".join(parts[1:]) if len(parts) > 1 else entry["path"]
+        grouped.setdefault(top, []).append({**entry, "display": display})
+
     return templates.TemplateResponse(
         request, "files.html",
-        context={"files": canonical},
+        context={"grouped": grouped},
     )
 
 

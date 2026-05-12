@@ -1,9 +1,11 @@
 """Internal REST API consumed by the dashboard frontend."""
 
+import io
+import zipfile
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -108,6 +110,26 @@ async def get_timeline(
 async def browse_files(db: AsyncSession = Depends(get_db)):
     canonical = mf.load_canonical(CANONICAL_MANIFEST)
     return canonical
+
+
+@router.get("/canonical.zip")
+async def download_canonical_zip():
+    """Download all current canonical files as a ZIP archive."""
+    canonical = mf.load_canonical(CANONICAL_MANIFEST)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for entry in canonical:
+            if mf.is_deleted(entry["hash"]):
+                continue
+            data = await read_blob(entry["hash"])
+            if data is not None:
+                zf.writestr(entry["path"], data)
+    buf.seek(0)
+    return Response(
+        content=buf.read(),
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="sramjet-canonical.zip"'},
+    )
 
 
 @router.get("/blobs/{hash}")

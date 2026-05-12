@@ -1,25 +1,39 @@
 {% extends "base.html" %}
 {% block title %} — Files{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Canonical File Store</h1>
+<div class="flex justify-between items-center mb-4">
+  <h1 class="text-2xl font-bold">Canonical File Store</h1>
+  <a href="/api/canonical.zip"
+     class="bg-gray-700 text-white text-sm px-4 py-2 rounded hover:bg-gray-800">
+    ↓ Download all as ZIP
+  </a>
+</div>
 
-{% if not files %}
+{% if not grouped %}
 <p class="text-gray-500">No files in canonical store yet.</p>
 {% endif %}
 
-<div class="bg-white rounded shadow divide-y">
-{% for entry in files %}
-{% if entry.path.endswith('.png') %}
-<div class="px-4 py-2 flex justify-between items-center{% if entry.hash == '' %} opacity-40{% endif %}">
-  <span class="font-mono text-sm break-all text-gray-400{% if entry.hash == '' %} line-through{% endif %}">{{ entry.path }}</span>
-  <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
-</div>
-{% else %}
-<a href="/files/{{ entry.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50{% if entry.hash == '' %} opacity-40{% endif %}">
-  <span class="font-mono text-sm break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.path }}</span>
-  <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
-</a>
-{% endif %}
+{% for dir_name, entries in grouped.items() %}
+<details class="mb-2 group">
+  <summary class="flex items-center justify-between bg-white rounded shadow px-4 py-3 cursor-pointer select-none hover:bg-gray-50 list-none">
+    <span class="font-mono text-sm font-medium text-gray-700">{{ dir_name }}/</span>
+    <span class="text-xs text-gray-400">{{ entries | length }} file{{ 's' if entries | length != 1 else '' }}</span>
+  </summary>
+  <div class="bg-white rounded-b shadow border-t divide-y mx-0.5">
+    {% for entry in entries %}
+    {% if entry.path.endswith('.png') %}
+    <div class="px-4 py-2 flex justify-between items-center{% if entry.hash == '' %} opacity-40{% endif %}">
+      <span class="font-mono text-sm break-all text-gray-400{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
+      <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
+    </div>
+    {% else %}
+    <a href="/files/{{ entry.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50{% if entry.hash == '' %} opacity-40{% endif %}">
+      <span class="font-mono text-sm break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
+      <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
+    </a>
+    {% endif %}
+    {% endfor %}
+  </div>
+</details>
 {% endfor %}
-</div>
 {% endblock %}
