@@ -23,6 +23,24 @@
     <img id="lightbox-img" src="" class="max-w-full max-h-full rounded shadow-xl" style="image-rendering: pixelated;">
   </div>
   <script>
+    function relativeTime(iso) {
+      const diff = (Date.now() - new Date(iso)) / 1000;
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      if (diff < 86400 * 7) return Math.floor(diff / 86400) + 'd ago';
+      return null; // use formatted string for older
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('[data-ts]').forEach(el => {
+        const rel = relativeTime(el.dataset.ts);
+        if (rel) {
+          el.title = el.textContent;
+          el.textContent = rel;
+        }
+      });
+    });
+
     function openLightbox(src) {
       const lb = document.getElementById('lightbox');
       document.getElementById('lightbox-img').src = src;

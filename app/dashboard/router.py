@@ -14,6 +14,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
+# Jinja2 helpers for path display
+templates.env.filters["basename"] = lambda p: p.split("/")[-1]
+templates.env.filters["dirname"] = lambda p: "/".join(p.split("/")[:-1])
+
+_DEVICE_COLORS = ["blue", "violet", "emerald", "orange", "pink", "teal", "red", "indigo"]
+
+def _device_color(name: str) -> str:
+    idx = sum(ord(c) for c in (name or "")) % len(_DEVICE_COLORS)
+    return _DEVICE_COLORS[idx]
+
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
@@ -103,15 +113,20 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
         event_local = event_utc.astimezone(tz)
         finished_utc = event.finished_at.replace(tzinfo=timezone.utc) if event.finished_at else None
 
+        # Exclude PNG files from the display list — they're shown as thumbnails
+        display_files = [f for f in files if not f.file_path.endswith(".png")]
+
         items.append({
             "event": event,
             "device": device,
             "files": files,
+            "display_files": display_files,
             "png_map": png_map,
-            "paired_png_paths": paired_png_paths,
             "started_at_fmt": event_local.strftime("%-m/%-d/%y at %-I:%M:%S %p"),
+            "started_at_iso": event_utc.isoformat(),
             "event_utc": event_utc,
             "finished_utc": finished_utc,
+            "device_color": _device_color(device.name if device else ""),
         })
 
     # Merge events from the same device that started within 10 seconds of each
@@ -137,12 +152,12 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
                     if state_path in combined_file_paths:
                         combined_png_map[state_path] = f.hash
                         combined_paired.add(f.file_path)
+            combined_display = [f for f in combined_files if not f.file_path.endswith(".png")]
             prev["files"] = combined_files
+            prev["display_files"] = combined_display
             prev["png_map"] = combined_png_map
-            prev["paired_png_paths"] = combined_paired
-            prev["files_uploaded"] = sum(1 for f in combined_files if f.action == "uploaded" and f.file_path not in combined_paired)
+            prev["files_uploaded"] = sum(1 for f in combined_display if f.action == "uploaded")
             prev["files_downloaded"] = prev.get("files_downloaded", 0) + item.get("files_downloaded", 0)
-            # Keep the finished event's stats if one is closed
             if item["finished_utc"] and not prev["finished_utc"]:
                 prev["finished_utc"] = item["finished_utc"]
         else:

@@ -8,90 +8,99 @@
 {% endif %}
 
 {% for section in sections %}
-<h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mt-6 mb-2 first:mt-0">{{ section.title }}</h2>
+<div class="flex items-center gap-3 mt-6 mb-2 first:mt-0">
+  <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ section.title }}</span>
+  <div class="flex-1 border-t border-gray-200"></div>
+</div>
 
 {% for item in section.events %}
 {% set event = item.event %}
 {% set device = item.device %}
-{% set files = item.files %}
+{% set display_files = item.display_files %}
 {% set png_map = item.png_map %}
-{% set paired_png_paths = item.paired_png_paths %}
-<div class="bg-white rounded shadow mb-2 p-4">
-  <div class="flex justify-between items-start mb-1">
-    <span class="font-medium">{{ device.display_name if device else 'Unknown' }}</span>
-    <span class="text-xs text-gray-400">{{ item.started_at_fmt }}</span>
-  </div>
-  <div class="text-sm text-gray-500 flex gap-4 mb-2">
-    <span>↑ {{ item.files_uploaded }} uploaded</span>
-    <span>↓ {{ item.files_downloaded }} downloaded</span>
-    {% if event.had_conflicts %}
-    <span class="text-red-600 font-medium">⚠ conflicts</span>
-    {% endif %}
-    {% if not item.finished_utc and (now_utc - item.event_utc).total_seconds() < 60 %}
-    <span class="text-yellow-600">in progress</span>
-    {% elif not item.finished_utc %}
-    <span class="text-gray-400">no changes</span>
-    {% endif %}
-  </div>
-  {% if files %}
-  {% set visible = files[:5] %}
-  {% set overflow = files[5:] %}
-  <div class="mt-2 space-y-1">
-    {% for f in visible %}
-    {% if f.file_path not in paired_png_paths %}
-    <div class="flex items-center gap-2 text-xs">
-      <span class="text-gray-400 w-16 shrink-0">
-        {% if f.action == 'uploaded' %}↑ upload
-        {% elif f.action == 'downloaded' %}↓ download
-        {% elif f.action == 'deleted' %}✕ deleted
-        {% elif f.action == 'conflicted' %}⚠ conflict
-        {% else %}{{ f.action }}{% endif %}
-      </span>
-      {% if f.file_path.endswith('.png') %}
-      <span class="font-mono text-gray-600 truncate">{{ f.file_path }}</span>
-      {% else %}
-      <a href="/files/{{ f.file_path }}" class="font-mono text-gray-600 hover:text-blue-600 hover:underline truncate">{{ f.file_path }}</a>
+{% set color = item.device_color %}
+<div class="bg-white rounded shadow mb-2 border-l-4 border-l-{{ color }}-400">
+  <div class="px-4 py-3">
+    <div class="flex justify-between items-start">
+      <span class="font-semibold text-{{ color }}-700">{{ device.display_name if device else 'Unknown' }}</span>
+      <span class="text-xs text-gray-400 cursor-default" data-ts="{{ item.started_at_iso }}">{{ item.started_at_fmt }}</span>
+    </div>
+    <div class="text-sm text-gray-400 flex gap-3 mt-0.5">
+      {% if item.files_uploaded %}
+      <span>↑ {{ item.files_uploaded }}</span>
       {% endif %}
-      {% if f.file_path in png_map %}
-      <img src="/api/blobs/{{ png_map[f.file_path] }}" class="h-10 rounded shrink-0 cursor-pointer hover:opacity-80" alt="screenshot"
-           onclick="openLightbox(this.src)">
+      {% if item.files_downloaded %}
+      <span>↓ {{ item.files_downloaded }}</span>
+      {% endif %}
+      {% if event.had_conflicts %}
+      <span class="text-red-500 font-medium">⚠ conflicts</span>
+      {% endif %}
+      {% if not item.finished_utc and (now_utc - item.event_utc).total_seconds() < 60 %}
+      <span class="text-yellow-500">in progress</span>
+      {% elif not item.finished_utc %}
+      <span class="text-gray-300">no changes</span>
+      {% endif %}
+    </div>
+
+    {% if display_files %}
+    {% set visible = display_files[:5] %}
+    {% set overflow = display_files[5:] %}
+    <div class="mt-2 space-y-1">
+      {% for f in visible %}
+      <div class="flex items-center gap-2 text-xs min-w-0">
+        {# Fixed-width thumbnail slot — keeps filenames aligned #}
+        <div class="w-12 h-8 shrink-0 flex items-center">
+          {% if f.file_path in png_map %}
+          <img src="/api/blobs/{{ png_map[f.file_path] }}"
+               class="h-8 w-12 object-cover rounded cursor-pointer hover:opacity-80"
+               onclick="openLightbox(this.src)" alt="">
+          {% endif %}
+        </div>
+        <span class="text-gray-300 shrink-0 w-3 text-center">
+          {% if f.action == 'uploaded' %}↑
+          {% elif f.action == 'downloaded' %}↓
+          {% elif f.action == 'deleted' %}✕
+          {% elif f.action == 'conflicted' %}⚠
+          {% else %}·{% endif %}
+        </span>
+        <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600">
+          <span class="text-gray-400">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
+        </a>
+      </div>
+      {% endfor %}
+      {% if overflow %}
+      <details class="mt-1">
+        <summary class="text-xs text-gray-400 cursor-pointer hover:text-gray-600 list-none pl-14">
+          + {{ overflow | length }} more file{{ 's' if overflow | length != 1 else '' }}
+        </summary>
+        <div class="mt-1 space-y-1">
+          {% for f in overflow %}
+          <div class="flex items-center gap-2 text-xs min-w-0">
+            <div class="w-12 h-8 shrink-0 flex items-center">
+              {% if f.file_path in png_map %}
+              <img src="/api/blobs/{{ png_map[f.file_path] }}"
+                   class="h-8 w-12 object-cover rounded cursor-pointer hover:opacity-80"
+                   onclick="openLightbox(this.src)" alt="">
+              {% endif %}
+            </div>
+            <span class="text-gray-300 shrink-0 w-3 text-center">
+              {% if f.action == 'uploaded' %}↑
+              {% elif f.action == 'downloaded' %}↓
+              {% elif f.action == 'deleted' %}✕
+              {% elif f.action == 'conflicted' %}⚠
+              {% else %}·{% endif %}
+            </span>
+            <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600">
+              <span class="text-gray-400">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </details>
       {% endif %}
     </div>
     {% endif %}
-    {% endfor %}
-    {% if overflow %}
-    <details class="mt-1">
-      <summary class="text-xs text-gray-400 cursor-pointer hover:text-gray-600 list-none">
-        + {{ overflow | length }} more file{{ 's' if overflow | length != 1 else '' }}
-      </summary>
-      <div class="mt-1 space-y-1">
-        {% for f in overflow %}
-        {% if f.file_path not in paired_png_paths %}
-        <div class="flex items-center gap-2 text-xs">
-          <span class="text-gray-400 w-16 shrink-0">
-            {% if f.action == 'uploaded' %}↑ upload
-            {% elif f.action == 'downloaded' %}↓ download
-            {% elif f.action == 'deleted' %}✕ deleted
-            {% elif f.action == 'conflicted' %}⚠ conflict
-            {% else %}{{ f.action }}{% endif %}
-          </span>
-          {% if f.file_path.endswith('.png') %}
-          <span class="font-mono text-gray-600 truncate">{{ f.file_path }}</span>
-          {% else %}
-          <a href="/files/{{ f.file_path }}" class="font-mono text-gray-600 hover:text-blue-600 hover:underline truncate">{{ f.file_path }}</a>
-          {% endif %}
-          {% if f.file_path in png_map %}
-          <img src="/api/blobs/{{ png_map[f.file_path] }}" class="h-10 rounded shrink-0 cursor-pointer hover:opacity-80" alt="screenshot"
-               onclick="openLightbox(this.src)">
-          {% endif %}
-        </div>
-        {% endif %}
-        {% endfor %}
-      </div>
-    </details>
-    {% endif %}
   </div>
-  {% endif %}
 </div>
 {% endfor %}
 {% endfor %}
