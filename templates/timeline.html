@@ -50,9 +50,8 @@
       <a href="/files/{{ f.file_path }}" class="font-mono text-gray-600 hover:text-blue-600 hover:underline truncate">{{ f.file_path }}</a>
       {% endif %}
       {% if f.file_path in png_map %}
-      <a href="/api/blobs/{{ png_map[f.file_path] }}" target="_blank">
-        <img src="/api/blobs/{{ png_map[f.file_path] }}" class="h-10 rounded shrink-0 hover:opacity-80" alt="screenshot">
-      </a>
+      <img src="/api/blobs/{{ png_map[f.file_path] }}" class="h-10 rounded shrink-0 cursor-pointer hover:opacity-80" alt="screenshot"
+           onclick="openLightbox(this.src)">
       {% endif %}
     </div>
     {% endif %}

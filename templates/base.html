@@ -17,5 +17,25 @@
   <main class="max-w-4xl mx-auto px-4 py-6">
     {% block content %}{% endblock %}
   </main>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-80 hidden items-center justify-center z-50 cursor-pointer" onclick="this.classList.add('hidden'); this.classList.remove('flex')">
+    <img id="lightbox-img" src="" class="max-w-full max-h-full rounded shadow-xl" style="image-rendering: pixelated;">
+  </div>
+  <script>
+    function openLightbox(src) {
+      const lb = document.getElementById('lightbox');
+      document.getElementById('lightbox-img').src = src;
+      lb.classList.remove('hidden');
+      lb.classList.add('flex');
+    }
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        const lb = document.getElementById('lightbox');
+        lb.classList.add('hidden');
+        lb.classList.remove('flex');
+      }
+    });
+  </script>
 </body>
 </html>
