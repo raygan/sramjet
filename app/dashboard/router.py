@@ -78,7 +78,26 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
             .order_by(SyncEventFile.file_path)
         )
         files = files_result.scalars().all()
-        enriched.append({"event": event, "device": device, "files": files})
+
+        # Build PNG pairing: {state_path: png_hash} for state files uploaded
+        # alongside a matching .png in the same sync event.
+        png_map = {}
+        paired_png_paths = set()
+        file_paths_in_event = {f.file_path for f in files}
+        for f in files:
+            if f.file_path.endswith(".png") and f.action == "uploaded":
+                state_path = f.file_path[:-4]
+                if state_path in file_paths_in_event:
+                    png_map[state_path] = f.hash
+                    paired_png_paths.add(f.file_path)
+
+        enriched.append({
+            "event": event,
+            "device": device,
+            "files": files,
+            "png_map": png_map,
+            "paired_png_paths": paired_png_paths,
+        })
 
     return templates.TemplateResponse(
         request, "timeline.html",
@@ -143,9 +162,35 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
         device = await db.get(Device, v.device_id)
         enriched.append({"version": v, "device": device})
 
+    # Find PNG thumbnails paired with each version of this state file.
+    # A PNG is paired when it was uploaded in the same sync event as the state.
+    version_pngs = {}  # {version.hash: png_hash}
+    png_path = path + ".png"
+
+    state_sefs_result = await db.execute(
+        select(SyncEventFile).where(
+            SyncEventFile.file_path == path,
+            SyncEventFile.action == "uploaded",
+        )
+    )
+    state_sefs = state_sefs_result.scalars().all()
+    event_to_state_hash = {sef.sync_event_id: sef.hash for sef in state_sefs}
+
+    if event_to_state_hash:
+        png_sefs_result = await db.execute(
+            select(SyncEventFile).where(
+                SyncEventFile.file_path == png_path,
+                SyncEventFile.sync_event_id.in_(list(event_to_state_hash.keys())),
+            )
+        )
+        for psef in png_sefs_result.scalars().all():
+            state_hash = event_to_state_hash.get(psef.sync_event_id)
+            if state_hash:
+                version_pngs[state_hash] = psef.hash
+
     return templates.TemplateResponse(
         request, "file_detail.html",
-        context={"path": path, "versions": enriched},
+        context={"path": path, "versions": enriched, "version_pngs": version_pngs},
     )
 
 

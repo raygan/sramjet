@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -160,6 +161,14 @@ async def resolve_conflict(
 async def browse_files(db: AsyncSession = Depends(get_db)):
     canonical = mf.load_canonical(CANONICAL_MANIFEST)
     return canonical
+
+
+@router.get("/blobs/{hash}")
+async def serve_blob(hash: str):
+    data = await read_blob(hash)
+    if data is None:
+        raise HTTPException(status_code=404)
+    return Response(content=data, media_type="image/png")
 
 
 @router.delete("/files/{path:path}", status_code=204)

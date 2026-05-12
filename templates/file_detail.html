@@ -13,16 +13,22 @@
 {% for item in versions %}
 {% set v = item.version %}
 {% set device = item.device %}
-<div class="px-4 py-3 flex items-center justify-between gap-4">
-  <div class="min-w-0">
-    <div class="flex items-center gap-2 mb-1">
-      {% if v.is_canonical %}
-      <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">current</span>
-      {% endif %}
-      <span class="text-xs text-gray-400">{{ v.received_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
-      <span class="text-xs text-gray-500">{{ device.display_name if device else 'unknown' }}</span>
+{% set png_hash = version_pngs.get(v.hash) %}
+<div class="px-4 py-3 flex items-start justify-between gap-4">
+  <div class="flex gap-3 items-start min-w-0">
+    {% if png_hash %}
+    <img src="/api/blobs/{{ png_hash }}" class="h-16 rounded shrink-0" alt="screenshot">
+    {% endif %}
+    <div class="min-w-0">
+      <div class="flex items-center gap-2 mb-1 flex-wrap">
+        {% if v.is_canonical %}
+        <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">current</span>
+        {% endif %}
+        <span class="text-xs text-gray-400">{{ v.received_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+        <span class="text-xs text-gray-500">{{ device.display_name if device else 'unknown' }}</span>
+      </div>
+      <div class="font-mono text-xs text-gray-500 break-all">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
     </div>
-    <div class="font-mono text-xs text-gray-500">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
   </div>
   {% if not v.is_canonical %}
   <form method="post" action="/files/{{ path }}/revert/{{ v.id }}" class="shrink-0">
