@@ -37,7 +37,7 @@
       {% endif %}
       {% if not item.finished_utc and (now_utc - item.event_utc).total_seconds() < 60 %}
       <span class="text-yellow-500">in progress</span>
-      {% elif not item.finished_utc %}
+      {% elif not item.finished_utc and not item.files_uploaded and not item.files_downloaded %}
       <span class="text-gray-300">no changes</span>
       {% endif %}
     </div>

@@ -83,6 +83,18 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
     today_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     week_start = (now_local - timedelta(days=now_local.weekday())).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
+    # Auto-close stale open events (download-only syncs never get a manifest PUT)
+    stale_cutoff = now_utc - timedelta(seconds=app.config.SYNC_EVENT_WINDOW_SECONDS)
+    stale_result = await db.execute(
+        select(SyncEvent).where(
+            SyncEvent.finished_at.is_(None),
+            SyncEvent.started_at < stale_cutoff.replace(tzinfo=None),
+        )
+    )
+    for stale in stale_result.scalars().all():
+        stale.finished_at = stale.started_at  # close at start time (no-op duration)
+    await db.commit()
+
     result = await db.execute(
         select(SyncEvent).order_by(SyncEvent.started_at.desc()).limit(200)
     )
