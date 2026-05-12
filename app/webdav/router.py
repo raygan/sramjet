@@ -112,15 +112,13 @@ async def _serve_manifest(device_name: str, db: AsyncSession) -> Response:
 
     manifest_path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
 
-    # When "Trust next sync" is set, serve the device's own last_fetched_manifest
-    # instead of the real canonical. RetroArch then sees the server as unchanged
-    # since its last sync, so it detects only local changes (not a conflict) and
-    # proceeds to upload. Our force_accept flag then accepts those uploads
-    # unconditionally. Falls back to canonical if no history exists yet.
-    if is_force_accept(device_name) and manifest_path.exists():
-        last_known = mf.load_canonical(manifest_path)
-        if last_known:
-            return Response(content=mf.serialize(last_known), media_type="application/json")
+    # When "Trust next sync" is set, serve an empty manifest. RetroArch explicitly
+    # handles a missing/reset server manifest by uploading all local files
+    # (source: task_cloudsync.c line ~1129: "assume the server state got reset").
+    # Our force_accept flag then accepts every upload unconditionally, making
+    # the device's local versions canonical for all files it has on disk.
+    if is_force_accept(device_name):
+        return Response(content=b"[]", media_type="application/json")
 
     # Seed last_fetched_manifest on first contact so uploads made after the
     # initial download are treated as clean advances, not conflicts.
