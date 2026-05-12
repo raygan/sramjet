@@ -3,8 +3,8 @@
 import app.config
 from app import manifest as mf
 from app.database import get_db
-from app.models import Conflict, Device, SyncEvent, SyncEventFile, Version
-from app.sync.engine import clear_force_accept, handle_conflict_resolution, is_force_accept, set_force_accept
+from app.models import Device, SyncEvent, SyncEventFile, Version
+from app.sync.engine import clear_force_accept, is_force_accept, set_force_accept
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -30,35 +30,9 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
     devices_result = await db.execute(select(Device).order_by(Device.last_sync.desc()))
     devices = devices_result.scalars().all()
 
-    conflicts_result = await db.execute(
-        select(Conflict).where(Conflict.resolved_at.is_(None))
-    )
-    conflict_count = len(conflicts_result.scalars().all())
-
     return templates.TemplateResponse(
         request, "index.html",
-        context={"devices": devices, "conflict_count": conflict_count},
-    )
-
-
-@router.get("/conflicts", response_class=HTMLResponse)
-async def dashboard_conflicts(request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Conflict)
-        .where(Conflict.resolved_at.is_(None))
-        .order_by(Conflict.detected_at.desc())
-    )
-    conflicts = result.scalars().all()
-
-    enriched = []
-    for c in conflicts:
-        da = await db.get(Device, c.device_a_id)
-        db_ = await db.get(Device, c.device_b_id)
-        enriched.append({"conflict": c, "device_a": da, "device_b": db_})
-
-    return templates.TemplateResponse(
-        request, "conflicts.html",
-        context={"conflicts": enriched},
+        context={"devices": devices},
     )
 
 
@@ -68,7 +42,7 @@ async def dashboard_remove_file(path: str = Form(...)):
     canonical_dict = mf.to_dict(canonical)
     canonical_dict.pop(path, None)
     mf.save_canonical(app.config.CANONICAL_MANIFEST, mf.from_dict(canonical_dict))
-    return RedirectResponse(url="/conflicts", status_code=303)
+    return RedirectResponse(url="/files", status_code=303)
 
 
 @router.get("/timeline", response_class=HTMLResponse)
@@ -318,20 +292,3 @@ async def dashboard_revert_file(path: str, version_id: int, db: AsyncSession = D
     return RedirectResponse(url=f"/files/{path}", status_code=303)
 
 
-@router.post("/conflicts/{conflict_id}/resolve")
-async def dashboard_resolve_conflict(
-    conflict_id: int,
-    winning_hash: str = Form(...),
-    db=Depends(get_db),
-):
-    result = await db.execute(select(Conflict).where(Conflict.id == conflict_id))
-    conflict = result.scalar_one_or_none()
-    if conflict is None:
-        raise HTTPException(status_code=404)
-    if conflict.resolved_at is not None:
-        raise HTTPException(status_code=409, detail="Already resolved")
-    if winning_hash not in (conflict.hash_a, conflict.hash_b, conflict.canonical_hash):
-        raise HTTPException(status_code=400, detail="Invalid winning_hash")
-    await handle_conflict_resolution(db, conflict, winning_hash)
-    await db.commit()
-    return RedirectResponse(url="/conflicts", status_code=303)

@@ -25,8 +25,6 @@ from app.models import Device
 log = logging.getLogger(__name__)
 from app.store import read_blob
 from app.sync.engine import (
-    ActiveConflictsError,
-    ConflictError,
     handle_file_delete,
     handle_file_upload,
     handle_manifest_upload,
@@ -147,12 +145,7 @@ async def webdav_put(
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
 
-    try:
-        await handle_file_upload(db, device, path, data, sync_event)
-    except ConflictError:
-        await db.commit()
-        return Response(status_code=409, content="Conflict")
-
+    await handle_file_upload(db, device, path, data, sync_event)
     await db.commit()
     return Response(status_code=201)
 
@@ -162,12 +155,7 @@ async def _put_manifest(db: AsyncSession, device: Device, data: bytes) -> Respon
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
 
-    try:
-        await handle_manifest_upload(db, device, data, sync_event)
-    except ActiveConflictsError as exc:
-        await db.commit()
-        return Response(status_code=409, content=f"Conflicts: {', '.join(exc.paths)}")
-
+    await handle_manifest_upload(db, device, data, sync_event)
     await db.commit()
     return Response(status_code=201)
 

@@ -11,9 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import manifest as mf
 from app.config import CANONICAL_MANIFEST
 from app.database import get_db
-from app.models import Conflict, Device, ManifestSnapshot, SyncEvent, SyncEventFile, Version
+from app.models import Device, ManifestSnapshot, SyncEvent, SyncEventFile, Version
 from app.store import read_blob
-from app.sync.engine import handle_conflict_resolution
 
 router = APIRouter(prefix="/api")
 
@@ -100,58 +99,6 @@ async def get_timeline(
             "files": [{"path": f.file_path, "action": f.action, "hash": f.hash} for f in files],
         })
     return out
-
-
-# ─── Conflicts ────────────────────────────────────────────────────────────────
-
-
-@router.get("/conflicts")
-async def list_conflicts(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(Conflict)
-        .where(Conflict.resolved_at.is_(None))
-        .order_by(Conflict.detected_at.desc())
-    )
-    conflicts = result.scalars().all()
-
-    out = []
-    for c in conflicts:
-        da = await db.get(Device, c.device_a_id)
-        db_ = await db.get(Device, c.device_b_id)
-        out.append({
-            "id": c.id,
-            "file_path": c.file_path,
-            "canonical_hash": c.canonical_hash,
-            "device_a": {"name": da.name, "display_name": da.display_name} if da else None,
-            "device_b": {"name": db_.name, "display_name": db_.display_name} if db_ else None,
-            "hash_a": c.hash_a,
-            "hash_b": c.hash_b,
-            "detected_at": _dt(c.detected_at),
-        })
-    return out
-
-
-class ResolveBody(BaseModel):
-    winning_hash: str  # hash_a, hash_b, or canonical_hash
-
-
-@router.post("/conflicts/{conflict_id}/resolve", status_code=204)
-async def resolve_conflict(
-    conflict_id: int,
-    body: ResolveBody,
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(Conflict).where(Conflict.id == conflict_id))
-    conflict = result.scalar_one_or_none()
-    if conflict is None:
-        raise HTTPException(status_code=404)
-    if conflict.resolved_at is not None:
-        raise HTTPException(status_code=409, detail="Already resolved")
-    if body.winning_hash not in (conflict.hash_a, conflict.hash_b, conflict.canonical_hash):
-        raise HTTPException(status_code=400, detail="winning_hash must be hash_a, hash_b, or canonical_hash")
-
-    await handle_conflict_resolution(db, conflict, body.winning_hash)
-    await db.commit()
 
 
 # ─── Files ────────────────────────────────────────────────────────────────────

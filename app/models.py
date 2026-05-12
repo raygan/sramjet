@@ -45,23 +45,6 @@ class Version(Base):
     device: Mapped["Device"] = relationship()
 
 
-class Conflict(Base):
-    __tablename__ = "conflicts"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    file_path: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    canonical_hash: Mapped[str] = mapped_column(String, nullable=False)
-    device_a_id: Mapped[int] = mapped_column(ForeignKey("devices.id"), nullable=False)
-    device_b_id: Mapped[int] = mapped_column(ForeignKey("devices.id"), nullable=False)
-    hash_a: Mapped[str] = mapped_column(String, nullable=False)
-    hash_b: Mapped[str] = mapped_column(String, nullable=False)
-    detected_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    resolved_by_hash: Mapped[str | None] = mapped_column(String, nullable=True)
-
-    device_a: Mapped["Device"] = relationship(foreign_keys=[device_a_id])
-    device_b: Mapped["Device"] = relationship(foreign_keys=[device_b_id])
-
 
 class SyncEvent(Base):
     __tablename__ = "sync_events"

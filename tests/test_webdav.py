@@ -69,32 +69,24 @@ async def test_full_sync_flow(client):
 
 
 @pytest.mark.asyncio
-async def test_conflict_detection(client):
-    """Two devices uploading different versions of the same file → conflict."""
+async def test_auto_resolve_conflict(client):
+    """Two devices uploading different versions — last write wins, no blocking."""
     import hashlib
 
-    # Device A syncs first
-    await client.options(f"/sync/mac/")
+    await client.options("/sync/mac/")
     data_a = b"mac save"
-    r = await client.put("/sync/mac/saves/game.sav", content=data_a)
-    assert r.status_code == 201
+    await client.put("/sync/mac/saves/game.sav", content=data_a)
     hash_a = hashlib.md5(data_a).hexdigest()
-    manifest_a = [{"path": "saves/game.sav", "hash": hash_a}]
-    r = await client.put("/sync/mac/manifest.server", content=json.dumps(manifest_a).encode())
-    assert r.status_code == 201
+    await client.put("/sync/mac/manifest.server", content=json.dumps([{"path": "saves/game.sav", "hash": hash_a}]).encode())
 
-    # Device B uploads a different version
-    await client.options(f"/sync/iphone/")
+    # Device B uploads a different version — should succeed (auto-resolved)
+    await client.options("/sync/iphone/")
     data_b = b"iphone save - different progress"
     r = await client.put("/sync/iphone/saves/game.sav", content=data_b)
-    # This should succeed at the file level (conflict detected at manifest time)
-    # OR be rejected immediately if canonical already differs
-    # Either 201 or 409 is acceptable depending on timing; what matters is
-    # the manifest PUT is rejected.
+    assert r.status_code == 201
     hash_b = hashlib.md5(data_b).hexdigest()
-    manifest_b = [{"path": "saves/game.sav", "hash": hash_b}]
-    r = await client.put("/sync/iphone/manifest.server", content=json.dumps(manifest_b).encode())
-    assert r.status_code == 409
+    r = await client.put("/sync/iphone/manifest.server", content=json.dumps([{"path": "saves/game.sav", "hash": hash_b}]).encode())
+    assert r.status_code == 201  # no longer blocked
 
 
 @pytest.mark.asyncio
