@@ -30,6 +30,7 @@ from app.sync.engine import (
     handle_file_delete,
     handle_file_upload,
     handle_manifest_upload,
+    is_force_accept,
     record_file_as_fetched,
     save_last_fetched_manifest,
 )
@@ -108,10 +109,21 @@ async def _serve_manifest(device_name: str, db: AsyncSession) -> Response:
         return Response(status_code=404)
     device, _ = await get_or_create_device(db, device_name)
     await db.commit()
+
+    manifest_path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
+
+    # When "Trust next sync" is set, serve the device's own last_fetched_manifest
+    # instead of the real canonical. RetroArch then sees the server as unchanged
+    # since its last sync, so it detects only local changes (not a conflict) and
+    # proceeds to upload. Our force_accept flag then accepts those uploads
+    # unconditionally. Falls back to canonical if no history exists yet.
+    if is_force_accept(device_name) and manifest_path.exists():
+        last_known = mf.load_canonical(manifest_path)
+        if last_known:
+            return Response(content=mf.serialize(last_known), media_type="application/json")
+
     # Seed last_fetched_manifest on first contact so uploads made after the
     # initial download are treated as clean advances, not conflicts.
-    # Only done once — after that it's updated at sync completion only.
-    manifest_path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
     if not manifest_path.exists():
         save_last_fetched_manifest(device_name, canonical)
     return Response(content=mf.serialize(canonical), media_type="application/json")
