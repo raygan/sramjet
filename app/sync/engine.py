@@ -56,8 +56,8 @@ async def handle_file_upload(
     if existing_conflict is not None:
         raise ConflictError(file_path)
 
-    if canonical_hash is None:
-        # No prior canonical for this path — first upload wins
+    if canonical_hash is None or mf.is_deleted(canonical_hash):
+        # No prior canonical, or file was previously deleted — treat as re-creation
         await _accept_as_canonical(db, device, file_path, incoming_hash, data, now, sync_event)
         return incoming_hash
 
