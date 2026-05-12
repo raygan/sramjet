@@ -213,17 +213,28 @@ async def dashboard_cancel_force_accept(name: str, db: AsyncSession = Depends(ge
 async def dashboard_files(request: Request):
     canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
 
-    # Group by top-level directory; compute display path (path minus first component)
-    grouped: dict[str, list] = {}
+    # Build two-level hierarchy: top_dir → sub_dir → [entries]
+    raw: dict[str, dict[str, list]] = {}
     for entry in canonical:
         parts = entry["path"].split("/")
-        top = parts[0] if len(parts) > 1 else ""
-        display = "/".join(parts[1:]) if len(parts) > 1 else entry["path"]
-        grouped.setdefault(top, []).append({**entry, "display": display})
+        top = parts[0] if len(parts) >= 2 else ""
+        sub = parts[1] if len(parts) >= 3 else ""
+        display = "/".join(parts[2:]) if len(parts) >= 3 else (parts[1] if len(parts) == 2 else parts[0])
+        raw.setdefault(top, {}).setdefault(sub, []).append({**entry, "display": display})
+
+    # Convert to a list structure with pre-computed totals for the template
+    dirs = []
+    for top, subdirs in raw.items():
+        total = sum(len(e) for e in subdirs.values())
+        sub_list = [
+            {"name": sub, "entries": entries}
+            for sub, entries in subdirs.items()
+        ]
+        dirs.append({"name": top, "total": total, "subdirs": sub_list})
 
     return templates.TemplateResponse(
         request, "files.html",
-        context={"grouped": grouped},
+        context={"dirs": dirs},
     )
 
 
