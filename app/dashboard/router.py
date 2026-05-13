@@ -1,5 +1,8 @@
 """Minimal Phase 1 dashboard — functional, not polished."""
 
+import re
+from urllib.parse import quote
+
 import app.config
 from app import manifest as mf
 from app.database import get_db
@@ -8,7 +11,7 @@ from app.sync.engine import clear_force_accept, is_force_accept, set_force_accep
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
@@ -16,6 +19,7 @@ templates = Jinja2Templates(directory="templates")
 
 # Jinja2 helpers for path display
 templates.env.filters["basename"] = lambda p: p.split("/")[-1]
+templates.env.filters["url_encode"] = lambda s: quote(str(s), safe="")
 templates.env.filters["dirname"] = lambda p: "/".join(p.split("/")[:-1])
 
 _DEVICE_COLORS = ["blue", "violet", "emerald", "orange", "pink", "teal", "red", "indigo"]
@@ -23,6 +27,43 @@ _DEVICE_COLORS = ["blue", "violet", "emerald", "orange", "pink", "teal", "red", 
 def _device_color(name: str) -> str:
     idx = sum(ord(c) for c in (name or "")) % len(_DEVICE_COLORS)
     return _DEVICE_COLORS[idx]
+
+
+# ─── Game name helpers ────────────────────────────────────────────────────────
+
+_SAVE_EXT = re.compile(r'\.(srm|sav|mcr|fla|rtc)$', re.IGNORECASE)
+_STATE_EXT = re.compile(r'\.state.*$', re.IGNORECASE)
+_ROM_EXT = re.compile(r'\.(zip|sfc|smc|gba|gb|gbc|nds|nes|md|gen|bin|z64|v64|n64|iso|pce|gg|smd|rom)$', re.IGNORECASE)
+_THUMB_EXT = re.compile(r'\.png$', re.IGNORECASE)
+_GAME_DIRS = {'saves', 'states', 'system', 'thumbnails'}
+
+
+def _extract_game_name(path: str) -> str | None:
+    """Return the game name from a canonical path, or None if not a game file."""
+    parts = path.split('/')
+    if len(parts) < 2:
+        return None
+    top = parts[0]
+    filename = parts[-1]
+    if top == 'saves':
+        name = _SAVE_EXT.sub('', filename)
+    elif top == 'states':
+        name = _STATE_EXT.sub('', filename)
+    elif top == 'system':
+        name = _ROM_EXT.sub('', filename)
+    elif top == 'thumbnails':
+        name = _THUMB_EXT.sub('', filename)
+    else:
+        return None
+    return name if name != filename else None
+
+
+def _format_game_name(name: str) -> tuple[str, str]:
+    """Split 'Foo (Bar) [Baz]' into ('Foo', '(Bar) [Baz]') for display."""
+    m = re.search(r'[\(\[]', name)
+    if m:
+        return name[:m.start()].rstrip(), name[m.start():]
+    return name, ''
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -207,6 +248,126 @@ async def dashboard_cancel_force_accept(name: str, db: AsyncSession = Depends(ge
         raise HTTPException(status_code=404)
     clear_force_accept(name)
     return RedirectResponse(url="/devices", status_code=303)
+
+
+@router.get("/games", response_class=HTMLResponse)
+async def dashboard_games(
+    request: Request,
+    sort: str = "recent",
+    db: AsyncSession = Depends(get_db),
+):
+    from datetime import datetime, timezone
+    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+    canonical_dict = mf.to_dict(canonical)
+
+    # Collect game names from saves and states only (source of truth)
+    game_files: dict[str, list] = {}
+    for path, hash_val in canonical_dict.items():
+        top = path.split('/')[0]
+        if top not in ('saves', 'states'):
+            continue
+        name = _extract_game_name(path)
+        if name:
+            game_files.setdefault(name, []).append(path)
+
+    # Get activity stats from version history
+    result = await db.execute(
+        select(Version.file_path, Version.received_at).where(
+            or_(
+                Version.file_path.like('saves/%'),
+                Version.file_path.like('states/%'),
+            )
+        )
+    )
+    rows = result.all()
+
+    game_stats: dict[str, dict] = {}
+    epoch = datetime(1970, 1, 1)
+    for file_path, received_at in rows:
+        name = _extract_game_name(file_path)
+        if not name or name not in game_files:
+            continue
+        stats = game_stats.setdefault(name, {'last_activity': epoch, 'activity_count': 0})
+        stats['activity_count'] += 1
+        if received_at > stats['last_activity']:
+            stats['last_activity'] = received_at
+
+    # Look up boxart thumbnail hash for each game (first match)
+    boxart: dict[str, str] = {}
+    for path, hash_val in canonical_dict.items():
+        if '/Named_Boxarts/' not in path or mf.is_deleted(hash_val):
+            continue
+        name = _extract_game_name(path)
+        if name and name in game_files and name not in boxart:
+            boxart[name] = hash_val
+
+    games = []
+    for name, files in game_files.items():
+        base, meta = _format_game_name(name)
+        stats = game_stats.get(name, {'last_activity': epoch, 'activity_count': 0})
+        games.append({
+            'name': name,
+            'base': base,
+            'meta': meta,
+            'file_count': len(files),
+            'last_activity': stats['last_activity'],
+            'activity_count': stats['activity_count'],
+            'boxart_hash': boxart.get(name),
+        })
+
+    if sort == 'alpha':
+        games.sort(key=lambda g: g['name'].lower())
+    elif sort == 'activity':
+        games.sort(key=lambda g: g['activity_count'], reverse=True)
+    else:
+        games.sort(key=lambda g: g['last_activity'], reverse=True)
+
+    return templates.TemplateResponse(
+        request, "games.html",
+        context={"games": games, "sort": sort},
+    )
+
+
+@router.get("/games/{name:path}", response_class=HTMLResponse)
+async def dashboard_game_detail(name: str, request: Request):
+    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+    canonical_dict = mf.to_dict(canonical)
+
+    saves, states, roms = [], [], []
+    boxarts, snaps, titles = [], [], []
+
+    for path, hash_val in canonical_dict.items():
+        extracted = _extract_game_name(path)
+        if extracted != name:
+            continue
+        entry = {'path': path, 'hash': hash_val, 'display': path.split('/')[-1]}
+        top = path.split('/')[0]
+        if top == 'saves':
+            saves.append(entry)
+        elif top == 'states' and not mf.is_deleted(hash_val):
+            states.append(entry)
+        elif top == 'system':
+            roms.append(entry)
+        elif top == 'thumbnails' and not mf.is_deleted(hash_val):
+            if '/Named_Boxarts/' in path:
+                boxarts.append(entry)
+            elif '/Named_Snaps/' in path:
+                snaps.append(entry)
+            elif '/Named_Titles/' in path:
+                titles.append(entry)
+
+    # Sort states: non-png first, then by name
+    states.sort(key=lambda e: (e['path'].endswith('.png'), e['path']))
+
+    base, meta = _format_game_name(name)
+    return templates.TemplateResponse(
+        request, "game_detail.html",
+        context={
+            "name": name, "base": base, "meta": meta,
+            "saves": saves, "states": states, "roms": roms,
+            "boxarts": boxarts, "snaps": snaps, "titles": titles,
+        },
+    )
 
 
 @router.get("/files", response_class=HTMLResponse)
