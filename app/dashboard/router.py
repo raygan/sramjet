@@ -66,6 +66,24 @@ def _format_game_name(name: str) -> tuple[str, str]:
     return name, ''
 
 
+def _names_match(a: str, b: str) -> bool:
+    """Return True if two game names refer to the same game.
+
+    'Mother 3 (Japan)' matches 'Mother 3 (Japan) [T-En...]' because
+    the shorter name is a word-boundary prefix of the longer one.
+    Exact equality always matches.
+    """
+    a, b = a.strip(), b.strip()
+    if a == b:
+        return True
+    shorter, longer = (a, b) if len(a) <= len(b) else (b, a)
+    if longer.startswith(shorter):
+        # Only accept if what follows in the longer name starts with a space
+        # (i.e. we're at a word boundary, not mid-token)
+        return longer[len(shorter):len(shorter) + 1] == ' '
+    return False
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
     devices_result = await db.execute(select(Device).order_by(Device.last_sync.desc()))
@@ -292,14 +310,21 @@ async def dashboard_games(
         if received_at > stats['last_activity']:
             stats['last_activity'] = received_at
 
-    # Look up boxart thumbnail hash for each game (first match)
-    boxart: dict[str, str] = {}
+    # Look up boxart thumbnail hash for each game using fuzzy name matching
+    thumb_boxarts: dict[str, str] = {}  # thumbnail_name → hash
     for path, hash_val in canonical_dict.items():
         if '/Named_Boxarts/' not in path or mf.is_deleted(hash_val):
             continue
-        name = _extract_game_name(path)
-        if name and name in game_files and name not in boxart:
-            boxart[name] = hash_val
+        tname = _extract_game_name(path)
+        if tname:
+            thumb_boxarts[tname] = hash_val
+
+    boxart: dict[str, str] = {}
+    for game_name in game_files:
+        for tname, hash_val in thumb_boxarts.items():
+            if _names_match(game_name, tname):
+                boxart[game_name] = hash_val
+                break
 
     games = []
     for name, files in game_files.items():
@@ -338,7 +363,7 @@ async def dashboard_game_detail(name: str, request: Request):
 
     for path, hash_val in canonical_dict.items():
         extracted = _extract_game_name(path)
-        if extracted != name:
+        if not extracted or not _names_match(extracted, name):
             continue
         entry = {'path': path, 'hash': hash_val, 'display': path.split('/')[-1]}
         top = path.split('/')[0]
