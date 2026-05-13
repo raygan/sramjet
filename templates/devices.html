@@ -10,38 +10,43 @@
 <div class="bg-white rounded shadow divide-y">
 {% for device in devices %}
 {% set trusted = force_accept_flags[device.name] %}
+{% set q = quarantine_flags[device.name] %}
 <div class="px-4 py-3">
   <div class="flex justify-between items-center">
-    <div>
+    <div class="flex items-center gap-2 flex-wrap">
       <span class="font-medium">{{ device.display_name }}</span>
-      <span class="font-mono text-xs text-gray-400 ml-2">/sync/{{ device.name }}/</span>
+      <span class="font-mono text-xs text-gray-400">/sync/{{ device.name }}/</span>
       {% if trusted %}
-      <span class="ml-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">trust next sync — sync now</span>
+      <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">trust next sync — sync now</span>
       {% endif %}
+      {% if q.saves %}<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">saves quarantined</span>{% endif %}
+      {% if q.states %}<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">states quarantined</span>{% endif %}
     </div>
-    <div class="text-sm text-gray-500">
-      {% if device.last_sync %}
-        {{ device.last_sync.strftime('%Y-%m-%d %H:%M') }}
-      {% else %}
-        Never synced
-      {% endif %}
+    <div class="text-sm text-gray-500 shrink-0 ml-2">
+      {% if device.last_sync %}{{ device.last_sync.strftime('%Y-%m-%d %H:%M') }}{% else %}Never synced{% endif %}
     </div>
   </div>
-  <div class="text-xs text-gray-400 mt-1 mb-2">First seen: {{ device.first_seen.strftime('%Y-%m-%d %H:%M') }}</div>
-  <div class="flex gap-2">
+  <div class="text-xs text-gray-400 mt-1 mb-3">First seen: {{ device.first_seen.strftime('%Y-%m-%d %H:%M') }}</div>
+  <div class="flex gap-2 flex-wrap items-center">
     {% if trusted %}
     <form method="post" action="/devices/{{ device.name }}/cancel-force-accept">
-      <button class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300">
-        Cancel
-      </button>
+      <button class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300">Cancel trust</button>
     </form>
     {% else %}
     <form method="post" action="/devices/{{ device.name }}/force-accept">
-      <button class="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700">
-        Trust next sync
-      </button>
+      <button class="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700">Trust next sync</button>
     </form>
     {% endif %}
+
+    <form method="post" action="/devices/{{ device.name }}/quarantine" class="flex items-center gap-2">
+      <span class="text-xs text-gray-500">Quarantine:</span>
+      <label class="text-xs text-gray-600 flex items-center gap-1">
+        <input type="checkbox" name="saves" {% if q.saves %}checked{% endif %} onchange="this.form.submit()"> saves
+      </label>
+      <label class="text-xs text-gray-600 flex items-center gap-1">
+        <input type="checkbox" name="states" {% if q.states %}checked{% endif %} onchange="this.form.submit()"> states
+      </label>
+    </form>
   </div>
 </div>
 {% endfor %}

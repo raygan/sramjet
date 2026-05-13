@@ -32,6 +32,13 @@ from app.sync.engine import (
     record_file_as_fetched,
     save_last_fetched_manifest,
 )
+from app.sync.quarantine import (
+    build_hybrid_manifest,
+    get_quarantine,
+    handle_quarantined_delete,
+    handle_quarantined_upload,
+    is_quarantined,
+)
 from app.sync.events import get_open_event, get_or_create_device, open_sync_event
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -102,24 +109,27 @@ async def webdav_get(
 
 
 async def _serve_manifest(device_name: str, db: AsyncSession) -> Response:
-    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
-    if not canonical:
-        return Response(status_code=404)
     device, _ = await get_or_create_device(db, device_name)
     await db.commit()
 
-    manifest_path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
-
-    # When "Trust next sync" is set, serve an empty manifest. RetroArch explicitly
-    # handles a missing/reset server manifest by uploading all local files
-    # (source: task_cloudsync.c line ~1129: "assume the server state got reset").
-    # Our force_accept flag then accepts every upload unconditionally, making
-    # the device's local versions canonical for all files it has on disk.
+    # Trust next sync: serve empty manifest so RetroArch re-uploads everything.
     if is_force_accept(device_name):
         return Response(content=b"[]", media_type="application/json")
 
+    # Quarantined device: serve hybrid manifest (main canonical minus quarantined
+    # types, plus the device's own quarantine canonical for those types).
+    q = get_quarantine(device_name)
+    if any(q.values()):
+        canonical = build_hybrid_manifest(device_name)
+    else:
+        canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+
+    if not canonical:
+        return Response(status_code=404)
+
     # Seed last_fetched_manifest on first contact so uploads made after the
     # initial download are treated as clean advances, not conflicts.
+    manifest_path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
     if not manifest_path.exists():
         save_last_fetched_manifest(device_name, canonical)
     return Response(content=mf.serialize(canonical), media_type="application/json")
@@ -145,7 +155,10 @@ async def webdav_put(
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
 
-    await handle_file_upload(db, device, path, data, sync_event)
+    if is_quarantined(device.name, path):
+        await handle_quarantined_upload(device.name, path, data, sync_event)
+    else:
+        await handle_file_upload(db, device, path, data, sync_event)
     await db.commit()
     return Response(status_code=201)
 
@@ -177,7 +190,10 @@ async def webdav_delete(
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
 
-    await handle_file_delete(db, device, path, sync_event)
+    if is_quarantined(device.name, path):
+        handle_quarantined_delete(device.name, path, sync_event)
+    else:
+        await handle_file_delete(db, device, path, sync_event)
     await db.commit()
     return Response(status_code=204)
 
@@ -204,6 +220,9 @@ async def webdav_move(
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
 
-    await handle_file_delete(db, device, path, sync_event)
+    if is_quarantined(device.name, path):
+        handle_quarantined_delete(device.name, path, sync_event)
+    else:
+        await handle_file_delete(db, device, path, sync_event)
     await db.commit()
     return Response(status_code=201)
