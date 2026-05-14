@@ -1,5 +1,29 @@
 {% extends "base.html" %}
 {% block title %} — Home{% endblock %}
+
+{% macro slot_badge(path) %}
+{% set slot = path | state_slot %}
+{% if slot %}
+<span class="text-xs px-1.5 py-0.5 rounded-full leading-none shrink-0 font-medium
+  {% if slot == 'Auto' %}bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400
+  {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %}">{{ slot }}</span>
+{% endif %}
+{% endmacro %}
+
+{% macro action_pill(action) %}
+{% if action == 'uploaded' %}
+<span class="text-xs px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 shrink-0 leading-none">↑</span>
+{% elif action == 'downloaded' %}
+<span class="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 shrink-0 leading-none">↓</span>
+{% elif action == 'deleted' %}
+<span class="text-xs px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 shrink-0 leading-none">✕</span>
+{% elif action == 'conflicted' %}
+<span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 shrink-0 leading-none">⚠</span>
+{% else %}
+<span class="text-xs text-gray-400 dark:text-gray-500 shrink-0">·</span>
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 
 {# ── Overview stats ─────────────────────────────────────────────────────────── #}
@@ -33,11 +57,9 @@
     </div>
     {# Current streak — focal point #}
     <div class="px-6 flex flex-col items-center">
-      <div class="relative flex items-center justify-center mb-3 mt-1">
-        <div class="w-24 h-24 rounded-full border-4 {% if current_streak > 0 %}border-orange-400 dark:border-orange-500{% else %}border-gray-200 dark:border-gray-600{% endif %} flex items-center justify-center">
-          <span class="text-3xl font-bold">{{ current_streak }}</span>
-        </div>
-        <span class="absolute -top-3 text-xl">🔥</span>
+      <img src="{{ streak_icon }}" class="h-12 w-12 mb-2" alt="">
+      <div class="w-24 h-24 rounded-full border-4 {% if current_streak > 0 %}border-orange-400 dark:border-orange-500{% else %}border-gray-200 dark:border-gray-600{% endif %} flex items-center justify-center mb-3">
+        <span class="text-3xl font-bold">{{ current_streak }}</span>
       </div>
       <div class="font-semibold text-sm {% if current_streak > 0 %}text-orange-500 dark:text-orange-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">Current Streak</div>
       <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
@@ -79,6 +101,62 @@
       <span class="text-xs text-gray-300 dark:text-gray-600">no changes</span>
       {% endif %}
     </div>
+
+    {% if recent_sync.display_files %}
+    {% set visible = recent_sync.display_files[:5] %}
+    {% set overflow = recent_sync.display_files[5:] %}
+    <div class="mt-2 space-y-1">
+      {% for f in visible %}
+      <div class="flex items-center gap-2 text-xs min-w-0">
+        <div class="w-24 h-16 shrink-0 flex items-center justify-center">
+          {% if f.file_path in recent_sync.png_map %}
+          <img src="/api/blobs/{{ recent_sync.png_map[f.file_path] }}"
+               class="h-16 w-24 object-cover rounded cursor-pointer hover:opacity-80"
+               onclick="openLightbox(this.src)" alt="">
+          {% elif f.file_path | is_save_file %}
+          <img src="/static/icons/diskette.png" class="h-10 w-10" alt="">
+          {% elif f.file_path | is_rom_file %}
+          <img src="/static/icons/game-cartridge.png" class="h-10 w-10" alt="">
+          {% endif %}
+        </div>
+        {{ action_pill(f.action) }}
+        {{ slot_badge(f.file_path) }}
+        <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600 dark:hover:text-blue-400">
+          <span class="text-gray-400 dark:text-gray-500">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
+        </a>
+      </div>
+      {% endfor %}
+      {% if overflow %}
+      <details class="mt-1">
+        <summary class="text-xs text-gray-400 dark:text-gray-500 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 list-none pl-28">
+          + {{ overflow | length }} more file{{ 's' if overflow | length != 1 else '' }}
+        </summary>
+        <div class="mt-1 space-y-1">
+          {% for f in overflow %}
+          <div class="flex items-center gap-2 text-xs min-w-0">
+            <div class="w-24 h-16 shrink-0 flex items-center justify-center">
+              {% if f.file_path in recent_sync.png_map %}
+              <img src="/api/blobs/{{ recent_sync.png_map[f.file_path] }}"
+                   class="h-16 w-24 object-cover rounded cursor-pointer hover:opacity-80"
+                   onclick="openLightbox(this.src)" alt="">
+              {% elif f.file_path | is_save_file %}
+              <img src="/static/icons/diskette.png" class="h-10 w-10" alt="">
+              {% elif f.file_path | is_rom_file %}
+              <img src="/static/icons/game-cartridge.png" class="h-10 w-10" alt="">
+              {% endif %}
+            </div>
+            {{ action_pill(f.action) }}
+            {{ slot_badge(f.file_path) }}
+            <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600 dark:hover:text-blue-400">
+              <span class="text-gray-400 dark:text-gray-500">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endif %}

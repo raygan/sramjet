@@ -210,6 +210,20 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
     if recent_event:
         device = await db.get(Device, recent_event.device_id)
         event_utc = recent_event.started_at.replace(tzinfo=timezone.utc)
+        files_result = await db.execute(
+            select(SyncEventFile)
+            .where(SyncEventFile.sync_event_id == recent_event.id)
+            .order_by(SyncEventFile.file_path)
+        )
+        files = files_result.scalars().all()
+        file_paths_in_event = {f.file_path for f in files}
+        png_map: dict[str, str] = {}
+        for f in files:
+            if f.file_path.endswith(".png") and f.action == "uploaded":
+                state_path = f.file_path[:-4]
+                if state_path in file_paths_in_event:
+                    png_map[state_path] = f.hash
+        display_files = [f for f in files if not f.file_path.endswith(".png")]
         recent_sync = {
             "event": recent_event,
             "device": device,
@@ -218,6 +232,8 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
             "device_color": _device_color(device.name if device else ""),
             "files_uploaded": recent_event.files_uploaded,
             "files_downloaded": recent_event.files_downloaded,
+            "display_files": display_files,
+            "png_map": png_map,
         }
 
     # ── Recently played games ─────────────────────────────────────────────────
@@ -256,6 +272,14 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
             "last_activity_fmt": _fmt_date_long(t_utc.astimezone(tz).date()),
         })
 
+    def _streak_icon(n: int) -> str:
+        if n == 0:   return "/static/icons/streak-0.png"
+        if n == 1:   return "/static/icons/streak-1.png"
+        if n <= 4:   return "/static/icons/streak-2.png"
+        if n <= 10:  return "/static/icons/streak-3.png"
+        if n <= 21:  return "/static/icons/streak-4.png"
+        return "/static/icons/streak-sword.png"
+
     return templates.TemplateResponse(
         request, "index.html",
         context={
@@ -264,6 +288,7 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
             "total_size": _fmt_size(total_size),
             "total_gaming_days": f"{total_gaming_days:,}",
             "first_gaming_day": first_gaming_day,
+            "streak_icon": _streak_icon(current_streak),
             "current_streak": current_streak,
             "current_streak_start": _fmt_date(current_streak_start),
             "current_streak_end": _fmt_date(current_streak_end),
