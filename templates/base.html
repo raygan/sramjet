@@ -4,19 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SRAMjet{% block title %}{% endblock %}</title>
+  <link rel="icon" type="image/png" href="/static/icons/jet.png">
+  <link rel="apple-touch-icon" href="/static/icons/jet.png">
+  <link rel="manifest" href="/static/site.webmanifest">
+  <meta name="theme-color" content="#1f2937">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-900 min-h-screen">
-  <nav class="bg-gray-800 text-white px-4 py-3 flex gap-6 text-sm">
-    <a href="/" class="font-bold hover:text-gray-300">SRAMjet</a>
+<body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col">
+  <nav class="bg-gray-800 text-white px-4 py-2 flex items-center gap-6 text-sm">
+    <a href="/" class="flex items-center gap-2 font-bold hover:text-gray-300">
+      <img src="/static/icons/jet.png" alt="SRAMjet" class="w-7 h-7">
+      SRAMjet
+    </a>
     <a href="/timeline" class="hover:text-gray-300">Timeline</a>
     <a href="/games" class="hover:text-gray-300">Games</a>
     <a href="/devices" class="hover:text-gray-300">Devices</a>
     <a href="/files" class="hover:text-gray-300">Files</a>
   </nav>
-  <main class="max-w-4xl mx-auto px-4 py-6">
+  <main class="max-w-4xl mx-auto px-4 py-6 flex-1 w-full">
     {% block content %}{% endblock %}
   </main>
+  <footer class="text-center text-xs text-gray-400 py-3">
+    Jet icon by <a href="https://www.flaticon.com/free-icon/jet_3301513" class="underline hover:text-gray-600" target="_blank" rel="noopener">Flaticon</a>
+  </footer>
 
   <!-- Lightbox -->
   <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-80 hidden items-center justify-center z-50 cursor-pointer" onclick="this.classList.add('hidden'); this.classList.remove('flex')">

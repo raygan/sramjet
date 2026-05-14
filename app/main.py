@@ -22,6 +22,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="SRAMjet", lifespan=lifespan)
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 app.include_router(webdav_router)
 app.include_router(api_router)
 app.include_router(dashboard_router)
