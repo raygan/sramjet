@@ -34,7 +34,7 @@
 <div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
   {% for f in saves %}
   <a href="/files/{{ f.path }}" class="px-4 py-2 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700{% if f.hash == '' %} opacity-40{% endif %}">
-    <img src="/static/icons/game-cartridge.png" class="h-8 w-8 opacity-50 dark:opacity-30 shrink-0" alt="">
+    <img src="/static/icons/diskette.png" class="h-8 w-8 shrink-0" alt="">
     <span class="font-mono text-sm break-all flex-1{% if f.hash == '' %} line-through{% endif %}">{{ f.display }}</span>
     <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{% if f.hash == '' %}deleted{% else %}{{ f.hash[:8] }}…{% endif %}</span>
   </a>
@@ -68,8 +68,9 @@
 <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 mt-6">ROMs</h2>
 <div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
   {% for f in roms %}
-  <a href="/files/{{ f.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700">
-    <span class="font-mono text-sm break-all">{{ f.display }}</span>
+  <a href="/files/{{ f.path }}" class="px-4 py-2 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700">
+    <img src="/static/icons/game-cartridge.png" class="h-8 w-8 shrink-0" alt="">
+    <span class="font-mono text-sm break-all flex-1">{{ f.display }}</span>
     <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{{ f.hash[:8] }}…</span>
   </a>
   {% endfor %}

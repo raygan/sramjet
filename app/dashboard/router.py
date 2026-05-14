@@ -23,6 +23,7 @@ templates.env.filters["basename"] = lambda p: p.split("/")[-1]
 templates.env.filters["url_encode"] = lambda s: quote(str(s), safe="")
 templates.env.filters["dirname"] = lambda p: "/".join(p.split("/")[:-1])
 templates.env.filters["is_save_file"] = lambda p: bool(_SAVE_EXT.search(p))
+templates.env.filters["is_rom_file"] = lambda p: bool(_ROM_EXT.search(p))
 
 def _state_slot(path: str) -> str | None:
     """Return a human-readable slot label for a state file path, or None."""
@@ -477,6 +478,15 @@ async def dashboard_files(request: Request):
 
 @router.get("/files/{path:path}", response_class=HTMLResponse)
 async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = Depends(get_db)):
+    from datetime import datetime, timedelta, timezone
+    tz = app.config.DISPLAY_TZ
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc.astimezone(tz)
+
+    just_now_cutoff = now_utc - timedelta(minutes=15)
+    today_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    week_start = (now_local - timedelta(days=now_local.weekday())).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+
     result = await db.execute(
         select(Version)
         .where(Version.file_path == path)
@@ -492,8 +502,7 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
         enriched.append({"version": v, "device": device})
 
     # Find PNG thumbnails paired with each version of this state file.
-    # A PNG is paired when it was uploaded in the same sync event as the state.
-    version_pngs = {}  # {version.hash: png_hash}
+    version_pngs = {}
     png_path = path + ".png"
 
     state_sefs_result = await db.execute(
@@ -517,9 +526,27 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
             if state_hash:
                 version_pngs[state_hash] = psef.hash
 
+    # Group versions into time sections
+    sections: list[dict] = []
+    def _add(title: str, item: dict) -> None:
+        if not sections or sections[-1]["title"] != title:
+            sections.append({"title": title, "items": []})
+        sections[-1]["items"].append(item)
+
+    for item in enriched:
+        t = item["version"].received_at.replace(tzinfo=timezone.utc)
+        if t >= just_now_cutoff:
+            _add("Just Now", item)
+        elif t >= today_start:
+            _add("Today", item)
+        elif t >= week_start:
+            _add("This Week", item)
+        else:
+            _add(t.astimezone(tz).strftime("%B %Y"), item)
+
     return templates.TemplateResponse(
         request, "file_detail.html",
-        context={"path": path, "versions": enriched, "version_pngs": version_pngs},
+        context={"path": path, "sections": sections, "version_pngs": version_pngs},
     )
 
 

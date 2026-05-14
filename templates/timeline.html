@@ -10,6 +10,20 @@
 {% endif %}
 {% endmacro %}
 
+{% macro action_pill(action) %}
+{% if action == 'uploaded' %}
+<span class="text-xs px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 shrink-0 leading-none">↑</span>
+{% elif action == 'downloaded' %}
+<span class="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 shrink-0 leading-none">↓</span>
+{% elif action == 'deleted' %}
+<span class="text-xs px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 shrink-0 leading-none">✕</span>
+{% elif action == 'conflicted' %}
+<span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 shrink-0 leading-none">⚠</span>
+{% else %}
+<span class="text-xs text-gray-400 dark:text-gray-500 shrink-0">·</span>
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 <h1 class="text-2xl font-bold mb-4">Timeline</h1>
 
@@ -35,20 +49,20 @@
       <span class="font-semibold text-{{ color }}-700 dark:text-{{ color }}-400">{{ device.display_name if device else 'Unknown' }}</span>
       <span class="text-xs text-gray-400 dark:text-gray-500 cursor-default" data-ts="{{ item.started_at_iso }}">{{ item.started_at_fmt }}</span>
     </div>
-    <div class="text-sm text-gray-400 dark:text-gray-500 flex gap-3 mt-0.5">
+    <div class="flex gap-2 mt-1 flex-wrap">
       {% if item.files_uploaded %}
-      <span>↑ {{ item.files_uploaded }}</span>
+      <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 font-medium leading-none">↑ {{ item.files_uploaded }}</span>
       {% endif %}
       {% if item.files_downloaded %}
-      <span>↓ {{ item.files_downloaded }}</span>
+      <span class="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 font-medium leading-none">↓ {{ item.files_downloaded }}</span>
       {% endif %}
       {% if event.had_conflicts %}
-      <span class="text-red-500 dark:text-red-400 font-medium">⚠ conflicts</span>
+      <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-medium leading-none">⚠ conflicts</span>
       {% endif %}
       {% if not item.finished_utc and (now_utc - item.event_utc).total_seconds() < 60 %}
-      <span class="text-yellow-500 dark:text-yellow-400">in progress</span>
+      <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 font-medium leading-none">in progress</span>
       {% elif not item.finished_utc and not item.files_uploaded and not item.files_downloaded %}
-      <span class="text-gray-300 dark:text-gray-600">no changes</span>
+      <span class="text-xs text-gray-300 dark:text-gray-600">no changes</span>
       {% endif %}
     </div>
 
@@ -64,16 +78,12 @@
                class="h-16 w-24 object-cover rounded cursor-pointer hover:opacity-80"
                onclick="openLightbox(this.src)" alt="">
           {% elif f.file_path | is_save_file %}
-          <img src="/static/icons/game-cartridge.png" class="h-10 w-10 opacity-50 dark:opacity-30" alt="">
+          <img src="/static/icons/diskette.png" class="h-10 w-10" alt="">
+          {% elif f.file_path | is_rom_file %}
+          <img src="/static/icons/game-cartridge.png" class="h-10 w-10" alt="">
           {% endif %}
         </div>
-        <span class="text-gray-300 dark:text-gray-600 shrink-0 w-3 text-center">
-          {% if f.action == 'uploaded' %}↑
-          {% elif f.action == 'downloaded' %}↓
-          {% elif f.action == 'deleted' %}✕
-          {% elif f.action == 'conflicted' %}⚠
-          {% else %}·{% endif %}
-        </span>
+        {{ action_pill(f.action) }}
         {{ slot_badge(f.file_path) }}
         <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600 dark:hover:text-blue-400">
           <span class="text-gray-400 dark:text-gray-500">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
@@ -94,16 +104,12 @@
                    class="h-16 w-24 object-cover rounded cursor-pointer hover:opacity-80"
                    onclick="openLightbox(this.src)" alt="">
               {% elif f.file_path | is_save_file %}
-              <img src="/static/icons/game-cartridge.png" class="h-10 w-10 opacity-50 dark:opacity-30" alt="">
+              <img src="/static/icons/diskette.png" class="h-10 w-10" alt="">
+              {% elif f.file_path | is_rom_file %}
+              <img src="/static/icons/game-cartridge.png" class="h-10 w-10" alt="">
               {% endif %}
             </div>
-            <span class="text-gray-300 dark:text-gray-600 shrink-0 w-3 text-center">
-              {% if f.action == 'uploaded' %}↑
-              {% elif f.action == 'downloaded' %}↓
-              {% elif f.action == 'deleted' %}✕
-              {% elif f.action == 'conflicted' %}⚠
-              {% else %}·{% endif %}
-            </span>
+            {{ action_pill(f.action) }}
             {{ slot_badge(f.file_path) }}
             <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600 dark:hover:text-blue-400">
               <span class="text-gray-400 dark:text-gray-500">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
