@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block title %} — Timeline{% endblock %}
+
+{% macro slot_badge(path) %}
+{% set slot = path | state_slot %}
+{% if slot %}
+<span class="text-xs px-1.5 py-0.5 rounded-full leading-none shrink-0 font-medium
+  {% if slot == 'Auto' %}bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400
+  {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %}">{{ slot }}</span>
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 <h1 class="text-2xl font-bold mb-4">Timeline</h1>
 
@@ -48,12 +58,13 @@
     <div class="mt-2 space-y-1">
       {% for f in visible %}
       <div class="flex items-center gap-2 text-xs min-w-0">
-        {# Fixed-width thumbnail slot — keeps filenames aligned #}
-        <div class="w-24 h-16 shrink-0 flex items-center">
+        <div class="w-24 h-16 shrink-0 flex items-center justify-center">
           {% if f.file_path in png_map %}
           <img src="/api/blobs/{{ png_map[f.file_path] }}"
                class="h-16 w-24 object-cover rounded cursor-pointer hover:opacity-80"
                onclick="openLightbox(this.src)" alt="">
+          {% elif f.file_path | is_save_file %}
+          <img src="/static/icons/game-cartridge.png" class="h-10 w-10 opacity-50 dark:opacity-30" alt="">
           {% endif %}
         </div>
         <span class="text-gray-300 dark:text-gray-600 shrink-0 w-3 text-center">
@@ -63,6 +74,7 @@
           {% elif f.action == 'conflicted' %}⚠
           {% else %}·{% endif %}
         </span>
+        {{ slot_badge(f.file_path) }}
         <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600 dark:hover:text-blue-400">
           <span class="text-gray-400 dark:text-gray-500">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
         </a>
@@ -76,11 +88,13 @@
         <div class="mt-1 space-y-1">
           {% for f in overflow %}
           <div class="flex items-center gap-2 text-xs min-w-0">
-            <div class="w-24 h-16 shrink-0 flex items-center">
+            <div class="w-24 h-16 shrink-0 flex items-center justify-center">
               {% if f.file_path in png_map %}
               <img src="/api/blobs/{{ png_map[f.file_path] }}"
                    class="h-16 w-24 object-cover rounded cursor-pointer hover:opacity-80"
                    onclick="openLightbox(this.src)" alt="">
+              {% elif f.file_path | is_save_file %}
+              <img src="/static/icons/game-cartridge.png" class="h-10 w-10 opacity-50 dark:opacity-30" alt="">
               {% endif %}
             </div>
             <span class="text-gray-300 dark:text-gray-600 shrink-0 w-3 text-center">
@@ -90,6 +104,7 @@
               {% elif f.action == 'conflicted' %}⚠
               {% else %}·{% endif %}
             </span>
+            {{ slot_badge(f.file_path) }}
             <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600 dark:hover:text-blue-400">
               <span class="text-gray-400 dark:text-gray-500">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
             </a>

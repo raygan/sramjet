@@ -22,6 +22,31 @@ templates = Jinja2Templates(directory="templates")
 templates.env.filters["basename"] = lambda p: p.split("/")[-1]
 templates.env.filters["url_encode"] = lambda s: quote(str(s), safe="")
 templates.env.filters["dirname"] = lambda p: "/".join(p.split("/")[:-1])
+templates.env.filters["is_save_file"] = lambda p: bool(_SAVE_EXT.search(p))
+
+def _state_slot(path: str) -> str | None:
+    """Return a human-readable slot label for a state file path, or None."""
+    name = path.split("/")[-1]
+    if re.search(r"\.state\.auto$", name, re.IGNORECASE):
+        return "Auto"
+    m = re.search(r"\.state(\d*)$", name, re.IGNORECASE)
+    if m:
+        return f"Slot {m.group(1) or '0'}"
+    return None
+
+templates.env.filters["state_slot"] = _state_slot
+
+
+def _state_slot_sort_key(entry: dict) -> tuple:
+    slot = _state_slot(entry["path"])
+    if slot == "Auto":
+        return (0, 0)
+    if slot is not None:
+        try:
+            return (1, int(slot.split()[-1]))
+        except ValueError:
+            return (1, 0)
+    return (2, 0)
 
 _DEVICE_COLORS = ["blue", "violet", "emerald", "orange", "pink", "teal", "red", "indigo"]
 
@@ -408,7 +433,7 @@ async def dashboard_game_detail(name: str, request: Request):
                 state_png_map[base_path] = e['hash']
         else:
             states_no_png.append(e)
-    states_no_png.sort(key=lambda e: e['path'])
+    states_no_png.sort(key=_state_slot_sort_key)
 
     base, meta = _format_game_name(name)
     return templates.TemplateResponse(

@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block title %} — {{ base }}{% endblock %}
+
+{% macro slot_badge(path) %}
+{% set slot = path | state_slot %}
+{% if slot %}
+<span class="text-xs px-1.5 py-0.5 rounded-full leading-none shrink-0 font-medium
+  {% if slot == 'Auto' %}bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400
+  {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %}">{{ slot }}</span>
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 <div class="mb-4">
   <a href="/games" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">← Games</a>
@@ -23,8 +33,9 @@
 <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 mt-4">Saves</h2>
 <div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
   {% for f in saves %}
-  <a href="/files/{{ f.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700{% if f.hash == '' %} opacity-40{% endif %}">
-    <span class="font-mono text-sm break-all{% if f.hash == '' %} line-through{% endif %}">{{ f.display }}</span>
+  <a href="/files/{{ f.path }}" class="px-4 py-2 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700{% if f.hash == '' %} opacity-40{% endif %}">
+    <img src="/static/icons/game-cartridge.png" class="h-8 w-8 opacity-50 dark:opacity-30 shrink-0" alt="">
+    <span class="font-mono text-sm break-all flex-1{% if f.hash == '' %} line-through{% endif %}">{{ f.display }}</span>
     <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{% if f.hash == '' %}deleted{% else %}{{ f.hash[:8] }}…{% endif %}</span>
   </a>
   {% endfor %}
@@ -44,6 +55,7 @@
     {% else %}
     <div class="h-10 w-16 shrink-0"></div>
     {% endif %}
+    {{ slot_badge(f.path) }}
     <span class="font-mono text-sm break-all flex-1">{{ f.display }}</span>
     <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{{ f.hash[:8] }}…</span>
   </a>
