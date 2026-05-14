@@ -12,7 +12,7 @@ from app.sync.quarantine import get_quarantine, set_quarantine
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
@@ -113,12 +113,166 @@ def _names_match(a: str, b: str) -> bool:
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
-    devices_result = await db.execute(select(Device).order_by(Device.last_sync.desc()))
-    devices = devices_result.scalars().all()
+    import os
+    from datetime import datetime, timedelta, timezone
+
+    tz = app.config.DISPLAY_TZ
+    now_utc = datetime.now(timezone.utc)
+    now_local = now_utc.astimezone(tz)
+    today = now_local.date()
+
+    # ── Overview stats ─────────────────────────────────────────────────────────
+    total_uploads_result = await db.execute(
+        select(func.count(Version.id)).where(
+            Version.hash != "",
+            or_(Version.file_path.like("saves/%"), Version.file_path.like("states/%")),
+        )
+    )
+    total_uploads = total_uploads_result.scalar() or 0
+
+    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+    canonical_dict = mf.to_dict(canonical)
+    game_names: set[str] = set()
+    for path in canonical_dict:
+        top = path.split("/")[0]
+        if top in ("saves", "states"):
+            name = _extract_game_name(path)
+            if name:
+                game_names.add(name)
+    games_played = len(game_names)
+
+    total_size = 0
+    if app.config.STORE_DIR.is_dir():
+        for dirpath, _, filenames in os.walk(app.config.STORE_DIR):
+            for fn in filenames:
+                try:
+                    total_size += os.path.getsize(os.path.join(dirpath, fn))
+                except OSError:
+                    pass
+
+    def _fmt_size(n: int) -> str:
+        if n < 1024:        return f"{n} B"
+        if n < 1024 ** 2:   return f"{n / 1024:.1f} KB"
+        if n < 1024 ** 3:   return f"{n / 1024 ** 2:.1f} MB"
+        return f"{n / 1024 ** 3:.2f} GB"
+
+    def _fmt_date(d) -> str:
+        return d.strftime("%b %-d") if d else ""
+
+    def _fmt_date_long(d) -> str:
+        return d.strftime("%b %-d, %Y") if d else ""
+
+    # ── Streaks ────────────────────────────────────────────────────────────────
+    rows = await db.execute(
+        select(Version.received_at).where(
+            Version.hash != "",
+            or_(Version.file_path.like("saves/%"), Version.file_path.like("states/%")),
+        )
+    )
+    upload_dates = sorted(set(
+        t.replace(tzinfo=timezone.utc).astimezone(tz).date()
+        for t in rows.scalars().all()
+    ))
+    dates_set = set(upload_dates)
+    total_gaming_days = len(upload_dates)
+    first_gaming_day = _fmt_date_long(upload_dates[0]) if upload_dates else ""
+
+    yesterday = today - timedelta(days=1)
+    anchor = today if today in dates_set else (yesterday if yesterday in dates_set else None)
+    current_streak, current_streak_start, current_streak_end = 0, None, None
+    if anchor is not None:
+        current_streak_end = anchor
+        d = anchor
+        while d in dates_set:
+            current_streak += 1
+            current_streak_start = d
+            d -= timedelta(days=1)
+
+    longest_streak, longest_streak_start, longest_streak_end = 0, None, None
+    if upload_dates:
+        run, run_start = 1, upload_dates[0]
+        for i in range(1, len(upload_dates)):
+            if (upload_dates[i] - upload_dates[i - 1]).days == 1:
+                run += 1
+            else:
+                if run > longest_streak:
+                    longest_streak, longest_streak_start, longest_streak_end = run, run_start, upload_dates[i - 1]
+                run, run_start = 1, upload_dates[i]
+        if run > longest_streak:
+            longest_streak, longest_streak_start, longest_streak_end = run, run_start, upload_dates[-1]
+
+    # ── Most recent sync ───────────────────────────────────────────────────────
+    recent_event_result = await db.execute(
+        select(SyncEvent).order_by(SyncEvent.started_at.desc()).limit(1)
+    )
+    recent_event = recent_event_result.scalar_one_or_none()
+    recent_sync = None
+    if recent_event:
+        device = await db.get(Device, recent_event.device_id)
+        event_utc = recent_event.started_at.replace(tzinfo=timezone.utc)
+        recent_sync = {
+            "event": recent_event,
+            "device": device,
+            "started_at_iso": event_utc.isoformat(),
+            "started_at_fmt": event_utc.astimezone(tz).strftime("%-m/%-d/%y at %-I:%M %p"),
+            "device_color": _device_color(device.name if device else ""),
+            "files_uploaded": recent_event.files_uploaded,
+            "files_downloaded": recent_event.files_downloaded,
+        }
+
+    # ── Recently played games ─────────────────────────────────────────────────
+    recent_rows = await db.execute(
+        select(Version.file_path, Version.received_at).where(
+            Version.hash != "",
+            or_(Version.file_path.like("saves/%"), Version.file_path.like("states/%")),
+        ).order_by(Version.received_at.desc()).limit(500)
+    )
+    seen_games: dict[str, object] = {}
+    for file_path, received_at in recent_rows.all():
+        name = _extract_game_name(file_path)
+        if name and name not in seen_games:
+            seen_games[name] = received_at
+        if len(seen_games) >= 3:
+            break
+
+    recent_games = []
+    for name, last_activity in seen_games.items():
+        base, meta = _format_game_name(name)
+        boxart_hash = None
+        for path, hash_val in canonical_dict.items():
+            if "/Named_Boxarts/" not in path or mf.is_deleted(hash_val):
+                continue
+            tname = _extract_game_name(path)
+            if tname and _names_match(name, tname):
+                boxart_hash = hash_val
+                break
+        t_utc = last_activity.replace(tzinfo=timezone.utc)
+        recent_games.append({
+            "name": name,
+            "base": base,
+            "meta": meta,
+            "boxart_hash": boxart_hash,
+            "last_activity_iso": t_utc.isoformat(),
+            "last_activity_fmt": _fmt_date_long(t_utc.astimezone(tz).date()),
+        })
 
     return templates.TemplateResponse(
         request, "index.html",
-        context={"devices": devices},
+        context={
+            "total_uploads": f"{total_uploads:,}",
+            "games_played": f"{games_played:,}",
+            "total_size": _fmt_size(total_size),
+            "total_gaming_days": f"{total_gaming_days:,}",
+            "first_gaming_day": first_gaming_day,
+            "current_streak": current_streak,
+            "current_streak_start": _fmt_date(current_streak_start),
+            "current_streak_end": _fmt_date(current_streak_end),
+            "longest_streak": longest_streak,
+            "longest_streak_start": _fmt_date_long(longest_streak_start),
+            "longest_streak_end": _fmt_date_long(longest_streak_end),
+            "recent_sync": recent_sync,
+            "recent_games": recent_games,
+        },
     )
 
 
