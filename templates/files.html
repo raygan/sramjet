@@ -4,21 +4,21 @@
 <div class="flex justify-between items-center mb-4">
   <h1 class="text-2xl font-bold">Canonical File Store</h1>
   <a href="/api/canonical.zip"
-     class="bg-gray-700 text-white text-sm px-4 py-2 rounded hover:bg-gray-800">
+     class="bg-gray-700 dark:bg-gray-600 text-white text-sm px-4 py-2 rounded hover:bg-gray-800 dark:hover:bg-gray-500">
     ↓ Download all as ZIP
   </a>
 </div>
 
 {% if not dirs %}
-<p class="text-gray-500">No files in canonical store yet.</p>
+<p class="text-gray-500 dark:text-gray-400">No files in canonical store yet.</p>
 {% endif %}
 
 {% for dir in dirs %}
 {# ── Level 1: top-level directory ───────────────────────────────────────── #}
 <details class="mb-2">
-  <summary class="flex items-center justify-between bg-white rounded shadow px-4 py-2.5 cursor-pointer select-none hover:bg-gray-50 list-none">
-    <span class="font-mono text-sm font-semibold text-gray-700">{{ dir.name }}/</span>
-    <span class="text-xs text-gray-400">{{ dir.total }} file{{ 's' if dir.total != 1 else '' }}</span>
+  <summary class="flex items-center justify-between bg-white dark:bg-gray-800 rounded shadow px-4 py-2.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-700 list-none">
+    <span class="font-mono text-sm font-semibold text-gray-700 dark:text-gray-300">{{ dir.name }}/</span>
+    <span class="text-xs text-gray-400 dark:text-gray-500">{{ dir.total }} file{{ 's' if dir.total != 1 else '' }}</span>
   </summary>
 
   <div class="ml-5 mt-1 space-y-1">
@@ -26,21 +26,21 @@
     {% if sub.name %}
     {# ── Level 2: sub-directory ─────────────────────────────────────────── #}
     <details>
-      <summary class="flex items-center justify-between bg-white rounded shadow-sm px-4 py-2 cursor-pointer select-none hover:bg-gray-50 list-none border-l-2 border-gray-200">
-        <span class="font-mono text-sm text-gray-600">{{ sub.name }}/</span>
-        <span class="text-xs text-gray-400">{{ sub.entries | length }} file{{ 's' if sub.entries | length != 1 else '' }}</span>
+      <summary class="flex items-center justify-between bg-white dark:bg-gray-800 rounded shadow-sm px-4 py-2 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-700 list-none border-l-2 border-gray-200 dark:border-gray-600">
+        <span class="font-mono text-sm text-gray-600 dark:text-gray-400">{{ sub.name }}/</span>
+        <span class="text-xs text-gray-400 dark:text-gray-500">{{ sub.entries | length }} file{{ 's' if sub.entries | length != 1 else '' }}</span>
       </summary>
-      <div class="ml-5 mt-0.5 bg-white rounded-sm shadow-sm border-l-2 border-gray-100 divide-y">
+      <div class="ml-5 mt-0.5 bg-white dark:bg-gray-800 rounded-sm shadow-sm border-l-2 border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
         {% for entry in sub.entries %}
         {% if entry.path.endswith('.png') %}
         <div class="px-4 py-1.5 flex justify-between items-center{% if entry.hash == '' %} opacity-40{% endif %}">
-          <span class="font-mono text-xs text-gray-400 break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
-          <span class="font-mono text-xs text-gray-300 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
+          <span class="font-mono text-xs text-gray-400 dark:text-gray-500 break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
+          <span class="font-mono text-xs text-gray-300 dark:text-gray-600 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
         </div>
         {% else %}
-        <a href="/files/{{ entry.path }}" class="px-4 py-1.5 flex justify-between items-center hover:bg-gray-50{% if entry.hash == '' %} opacity-40{% endif %}">
+        <a href="/files/{{ entry.path }}" class="px-4 py-1.5 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700{% if entry.hash == '' %} opacity-40{% endif %}">
           <span class="font-mono text-xs break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
-          <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
+          <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
         </a>
         {% endif %}
         {% endfor %}
@@ -48,17 +48,17 @@
     </details>
     {% else %}
     {# ── Files directly in top-level dir (no sub-dir) ───────────────────── #}
-    <div class="bg-white rounded shadow-sm border-l-2 border-gray-200 divide-y">
+    <div class="bg-white dark:bg-gray-800 rounded shadow-sm border-l-2 border-gray-200 dark:border-gray-600 divide-y divide-gray-100 dark:divide-gray-700">
       {% for entry in sub.entries %}
       {% if entry.path.endswith('.png') %}
       <div class="px-4 py-1.5 flex justify-between items-center{% if entry.hash == '' %} opacity-40{% endif %}">
-        <span class="font-mono text-xs text-gray-400 break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
-        <span class="font-mono text-xs text-gray-300 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
+        <span class="font-mono text-xs text-gray-400 dark:text-gray-500 break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
+        <span class="font-mono text-xs text-gray-300 dark:text-gray-600 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
       </div>
       {% else %}
-      <a href="/files/{{ entry.path }}" class="px-4 py-1.5 flex justify-between items-center hover:bg-gray-50{% if entry.hash == '' %} opacity-40{% endif %}">
+      <a href="/files/{{ entry.path }}" class="px-4 py-1.5 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700{% if entry.hash == '' %} opacity-40{% endif %}">
         <span class="font-mono text-xs break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
-        <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
+        <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
       </a>
       {% endif %}
       {% endfor %}

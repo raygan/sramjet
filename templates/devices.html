@@ -4,10 +4,10 @@
 <h1 class="text-2xl font-bold mb-4">Devices</h1>
 
 {% if not devices %}
-<p class="text-gray-500">No devices registered yet.</p>
+<p class="text-gray-500 dark:text-gray-400">No devices registered yet.</p>
 {% endif %}
 
-<div class="bg-white rounded shadow divide-y">
+<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
 {% for device in devices %}
 {% set trusted = force_accept_flags[device.name] %}
 {% set q = quarantine_flags[device.name] %}
@@ -15,22 +15,22 @@
   <div class="flex justify-between items-center">
     <div class="flex items-center gap-2 flex-wrap">
       <span class="font-medium">{{ device.display_name }}</span>
-      <span class="font-mono text-xs text-gray-400">/sync/{{ device.name }}/</span>
+      <span class="font-mono text-xs text-gray-400 dark:text-gray-500">/sync/{{ device.name }}/</span>
       {% if trusted %}
-      <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-medium">trust next sync — sync now</span>
+      <span class="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded font-medium">trust next sync — sync now</span>
       {% endif %}
-      {% if q.saves %}<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">saves quarantined</span>{% endif %}
-      {% if q.states %}<span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">states quarantined</span>{% endif %}
+      {% if q.saves %}<span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded">saves quarantined</span>{% endif %}
+      {% if q.states %}<span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded">states quarantined</span>{% endif %}
     </div>
-    <div class="text-sm text-gray-500 shrink-0 ml-2">
+    <div class="text-sm text-gray-500 dark:text-gray-400 shrink-0 ml-2">
       {% if device.last_sync %}{{ device.last_sync.strftime('%Y-%m-%d %H:%M') }}{% else %}Never synced{% endif %}
     </div>
   </div>
-  <div class="text-xs text-gray-400 mt-1 mb-3">First seen: {{ device.first_seen.strftime('%Y-%m-%d %H:%M') }}</div>
+  <div class="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-3">First seen: {{ device.first_seen.strftime('%Y-%m-%d %H:%M') }}</div>
   <div class="flex gap-2 flex-wrap items-center">
     {% if trusted %}
     <form method="post" action="/devices/{{ device.name }}/cancel-force-accept">
-      <button class="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300">Cancel trust</button>
+      <button class="text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-3 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-500">Cancel trust</button>
     </form>
     {% else %}
     <form method="post" action="/devices/{{ device.name }}/force-accept">
@@ -39,11 +39,11 @@
     {% endif %}
 
     <form method="post" action="/devices/{{ device.name }}/quarantine" class="flex items-center gap-2">
-      <span class="text-xs text-gray-500">Quarantine:</span>
-      <label class="text-xs text-gray-600 flex items-center gap-1">
+      <span class="text-xs text-gray-500 dark:text-gray-400">Quarantine:</span>
+      <label class="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1">
         <input type="checkbox" name="saves" {% if q.saves %}checked{% endif %} onchange="this.form.submit()"> saves
       </label>
-      <label class="text-xs text-gray-600 flex items-center gap-1">
+      <label class="text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1">
         <input type="checkbox" name="states" {% if q.states %}checked{% endif %} onchange="this.form.submit()"> states
       </label>
     </form>
@@ -52,7 +52,7 @@
 {% endfor %}
 </div>
 
-<p class="text-xs text-gray-400 mt-4">
+<p class="text-xs text-gray-400 dark:text-gray-500 mt-4">
   "Trust next sync" bypasses conflict detection for one sync from that device —
   all uploads are accepted as canonical. The flag clears automatically when the sync completes.
 </p>

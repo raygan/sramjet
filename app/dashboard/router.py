@@ -397,16 +397,26 @@ async def dashboard_game_detail(name: str, request: Request):
             elif '/Named_Titles/' in path:
                 titles.append(entry)
 
-    # Sort states: non-png first, then by name
-    states.sort(key=lambda e: (e['path'].endswith('.png'), e['path']))
+    # Pair PNG screenshots with their matching state files, then exclude PNGs from the list.
+    state_paths = {e['path'] for e in states if not e['path'].endswith('.png')}
+    state_png_map = {}
+    states_no_png = []
+    for e in states:
+        if e['path'].endswith('.png'):
+            base_path = e['path'][:-4]
+            if base_path in state_paths:
+                state_png_map[base_path] = e['hash']
+        else:
+            states_no_png.append(e)
+    states_no_png.sort(key=lambda e: e['path'])
 
     base, meta = _format_game_name(name)
     return templates.TemplateResponse(
         request, "game_detail.html",
         context={
             "name": name, "base": base, "meta": meta,
-            "saves": saves, "states": states, "roms": roms,
-            "boxarts": boxarts, "snaps": snaps, "titles": titles,
+            "saves": saves, "states": states_no_png, "state_png_map": state_png_map,
+            "roms": roms, "boxarts": boxarts, "snaps": snaps, "titles": titles,
         },
     )
 

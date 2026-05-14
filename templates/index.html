@@ -3,17 +3,16 @@
 {% block content %}
 <h1 class="text-2xl font-bold mb-4">Overview</h1>
 
-
 <h2 class="text-lg font-semibold mb-2">Devices</h2>
 {% if devices %}
-<div class="bg-white rounded shadow divide-y">
+<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
   {% for device in devices %}
   <div class="px-4 py-3 flex justify-between items-center">
     <div>
       <span class="font-medium">{{ device.display_name }}</span>
-      <span class="text-gray-400 text-sm ml-2">/sync/{{ device.name }}/</span>
+      <span class="text-gray-400 dark:text-gray-500 text-sm ml-2">/sync/{{ device.name }}/</span>
     </div>
-    <div class="text-sm text-gray-500">
+    <div class="text-sm text-gray-500 dark:text-gray-400">
       {% if device.last_sync %}
         Last sync: {{ device.last_sync.strftime('%Y-%m-%d %H:%M') }}
       {% else %}
@@ -24,6 +23,6 @@
   {% endfor %}
 </div>
 {% else %}
-<p class="text-gray-500">No devices have synced yet. Point a RetroArch device at <code>/sync/{device-name}/</code>.</p>
+<p class="text-gray-500 dark:text-gray-400">No devices have synced yet. Point a RetroArch device at <code>/sync/{device-name}/</code>.</p>
 {% endif %}
 {% endblock %}

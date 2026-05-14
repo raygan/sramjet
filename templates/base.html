@@ -8,9 +8,17 @@
   <link rel="apple-touch-icon" href="/static/icons/jet.png">
   <link rel="manifest" href="/static/site.webmanifest">
   <meta name="theme-color" content="#1f2937">
+  <script>
+    // Apply dark class before page renders to avoid flash.
+    // Default to dark when device preference is unknown.
+    if (!window.matchMedia('(prefers-color-scheme: light)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
-<body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col">
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
   <nav class="bg-gray-800 text-white px-4 py-2 flex items-center gap-6 text-sm">
     <a href="/" class="flex items-center gap-2 font-bold hover:text-gray-300">
       <img src="/static/icons/jet.png" alt="SRAMjet" class="w-7 h-7">
@@ -24,13 +32,13 @@
   <main class="max-w-4xl mx-auto px-4 py-6 flex-1 w-full">
     {% block content %}{% endblock %}
   </main>
-  <footer class="text-center text-xs text-gray-400 py-3">
-    Jet icon by <a href="https://www.flaticon.com/free-icon/jet_3301513" class="underline hover:text-gray-600" target="_blank" rel="noopener">Flaticon</a>
+  <footer class="text-center text-xs text-gray-400 dark:text-gray-600 py-3">
+    Jet icon by <a href="https://www.flaticon.com/free-icon/jet_3301513" class="underline hover:text-gray-600 dark:hover:text-gray-400" target="_blank" rel="noopener">Flaticon</a>
   </footer>
 
   <!-- Lightbox -->
   <div id="lightbox" class="fixed inset-0 bg-black bg-opacity-80 hidden items-center justify-center z-50 cursor-pointer" onclick="this.classList.add('hidden'); this.classList.remove('flex')">
-    <img id="lightbox-img" src="" class="max-w-full max-h-full rounded shadow-xl" style="image-rendering: pixelated;">
+    <img id="lightbox-img" src="" class="rounded shadow-xl" style="image-rendering: pixelated; max-width: 100vw;">
   </div>
   <script>
     function relativeTime(iso) {
@@ -39,7 +47,7 @@
       if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
       if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
       if (diff < 86400 * 7) return Math.floor(diff / 86400) + 'd ago';
-      return null; // use formatted string for older
+      return null;
     }
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('[data-ts]').forEach(el => {
@@ -53,7 +61,20 @@
 
     function openLightbox(src) {
       const lb = document.getElementById('lightbox');
-      document.getElementById('lightbox-img').src = src;
+      const img = document.getElementById('lightbox-img');
+      img.style.width = '';
+      img.style.height = '';
+      img.src = src;
+      function sizeImage() {
+        const w = Math.min(img.naturalWidth * 4, window.innerWidth);
+        img.style.width = w + 'px';
+        img.style.height = 'auto';
+      }
+      if (img.complete && img.naturalWidth > 0) {
+        sizeImage();
+      } else {
+        img.onload = sizeImage;
+      }
       lb.classList.remove('hidden');
       lb.classList.add('flex');
     }

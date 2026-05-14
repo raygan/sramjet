@@ -4,13 +4,13 @@
 <h1 class="text-2xl font-bold mb-4">Timeline</h1>
 
 {% if not sections %}
-<p class="text-gray-500">No sync events yet.</p>
+<p class="text-gray-500 dark:text-gray-400">No sync events yet.</p>
 {% endif %}
 
 {% for section in sections %}
 <div class="flex items-center gap-3 mt-6 mb-2 first:mt-0">
-  <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">{{ section.title }}</span>
-  <div class="flex-1 border-t border-gray-200"></div>
+  <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{{ section.title }}</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
 </div>
 
 {% for item in section.events %}
@@ -19,13 +19,13 @@
 {% set display_files = item.display_files %}
 {% set png_map = item.png_map %}
 {% set color = item.device_color %}
-<div class="bg-white rounded shadow mb-2 border-l-4 border-l-{{ color }}-400">
+<div class="bg-white dark:bg-gray-800 rounded shadow mb-2 border-l-4 border-l-{{ color }}-400">
   <div class="px-4 py-3">
     <div class="flex justify-between items-start">
-      <span class="font-semibold text-{{ color }}-700">{{ device.display_name if device else 'Unknown' }}</span>
-      <span class="text-xs text-gray-400 cursor-default" data-ts="{{ item.started_at_iso }}">{{ item.started_at_fmt }}</span>
+      <span class="font-semibold text-{{ color }}-700 dark:text-{{ color }}-400">{{ device.display_name if device else 'Unknown' }}</span>
+      <span class="text-xs text-gray-400 dark:text-gray-500 cursor-default" data-ts="{{ item.started_at_iso }}">{{ item.started_at_fmt }}</span>
     </div>
-    <div class="text-sm text-gray-400 flex gap-3 mt-0.5">
+    <div class="text-sm text-gray-400 dark:text-gray-500 flex gap-3 mt-0.5">
       {% if item.files_uploaded %}
       <span>↑ {{ item.files_uploaded }}</span>
       {% endif %}
@@ -33,12 +33,12 @@
       <span>↓ {{ item.files_downloaded }}</span>
       {% endif %}
       {% if event.had_conflicts %}
-      <span class="text-red-500 font-medium">⚠ conflicts</span>
+      <span class="text-red-500 dark:text-red-400 font-medium">⚠ conflicts</span>
       {% endif %}
       {% if not item.finished_utc and (now_utc - item.event_utc).total_seconds() < 60 %}
-      <span class="text-yellow-500">in progress</span>
+      <span class="text-yellow-500 dark:text-yellow-400">in progress</span>
       {% elif not item.finished_utc and not item.files_uploaded and not item.files_downloaded %}
-      <span class="text-gray-300">no changes</span>
+      <span class="text-gray-300 dark:text-gray-600">no changes</span>
       {% endif %}
     </div>
 
@@ -49,49 +49,49 @@
       {% for f in visible %}
       <div class="flex items-center gap-2 text-xs min-w-0">
         {# Fixed-width thumbnail slot — keeps filenames aligned #}
-        <div class="w-12 h-8 shrink-0 flex items-center">
+        <div class="w-24 h-16 shrink-0 flex items-center">
           {% if f.file_path in png_map %}
           <img src="/api/blobs/{{ png_map[f.file_path] }}"
-               class="h-8 w-12 object-cover rounded cursor-pointer hover:opacity-80"
+               class="h-16 w-24 object-cover rounded cursor-pointer hover:opacity-80"
                onclick="openLightbox(this.src)" alt="">
           {% endif %}
         </div>
-        <span class="text-gray-300 shrink-0 w-3 text-center">
+        <span class="text-gray-300 dark:text-gray-600 shrink-0 w-3 text-center">
           {% if f.action == 'uploaded' %}↑
           {% elif f.action == 'downloaded' %}↓
           {% elif f.action == 'deleted' %}✕
           {% elif f.action == 'conflicted' %}⚠
           {% else %}·{% endif %}
         </span>
-        <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600">
-          <span class="text-gray-400">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
+        <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600 dark:hover:text-blue-400">
+          <span class="text-gray-400 dark:text-gray-500">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
         </a>
       </div>
       {% endfor %}
       {% if overflow %}
       <details class="mt-1">
-        <summary class="text-xs text-gray-400 cursor-pointer hover:text-gray-600 list-none pl-14">
+        <summary class="text-xs text-gray-400 dark:text-gray-500 cursor-pointer hover:text-gray-600 dark:hover:text-gray-300 list-none pl-28">
           + {{ overflow | length }} more file{{ 's' if overflow | length != 1 else '' }}
         </summary>
         <div class="mt-1 space-y-1">
           {% for f in overflow %}
           <div class="flex items-center gap-2 text-xs min-w-0">
-            <div class="w-12 h-8 shrink-0 flex items-center">
+            <div class="w-24 h-16 shrink-0 flex items-center">
               {% if f.file_path in png_map %}
               <img src="/api/blobs/{{ png_map[f.file_path] }}"
-                   class="h-8 w-12 object-cover rounded cursor-pointer hover:opacity-80"
+                   class="h-16 w-24 object-cover rounded cursor-pointer hover:opacity-80"
                    onclick="openLightbox(this.src)" alt="">
               {% endif %}
             </div>
-            <span class="text-gray-300 shrink-0 w-3 text-center">
+            <span class="text-gray-300 dark:text-gray-600 shrink-0 w-3 text-center">
               {% if f.action == 'uploaded' %}↑
               {% elif f.action == 'downloaded' %}↓
               {% elif f.action == 'deleted' %}✕
               {% elif f.action == 'conflicted' %}⚠
               {% else %}·{% endif %}
             </span>
-            <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600">
-              <span class="text-gray-400">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
+            <a href="/files/{{ f.file_path }}" class="font-mono min-w-0 truncate hover:text-blue-600 dark:hover:text-blue-400">
+              <span class="text-gray-400 dark:text-gray-500">{{ f.file_path | dirname }}/</span>{{ f.file_path | basename }}
             </a>
           </div>
           {% endfor %}

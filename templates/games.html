@@ -4,30 +4,30 @@
 <div class="flex justify-between items-center mb-4">
   <h1 class="text-2xl font-bold">Games</h1>
   <div class="flex gap-1 text-sm">
-    <a href="?sort=recent"   class="px-3 py-1.5 rounded {% if sort == 'recent' %}bg-gray-700 text-white{% else %}bg-white text-gray-600 hover:bg-gray-100{% endif %}">Recent</a>
-    <a href="?sort=alpha"    class="px-3 py-1.5 rounded {% if sort == 'alpha' %}bg-gray-700 text-white{% else %}bg-white text-gray-600 hover:bg-gray-100{% endif %}">A–Z</a>
-    <a href="?sort=activity" class="px-3 py-1.5 rounded {% if sort == 'activity' %}bg-gray-700 text-white{% else %}bg-white text-gray-600 hover:bg-gray-100{% endif %}">Most Active</a>
+    <a href="?sort=recent"   class="px-3 py-1.5 rounded {% if sort == 'recent' %}bg-gray-700 dark:bg-gray-600 text-white{% else %}bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700{% endif %}">Recent</a>
+    <a href="?sort=alpha"    class="px-3 py-1.5 rounded {% if sort == 'alpha' %}bg-gray-700 dark:bg-gray-600 text-white{% else %}bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700{% endif %}">A–Z</a>
+    <a href="?sort=activity" class="px-3 py-1.5 rounded {% if sort == 'activity' %}bg-gray-700 dark:bg-gray-600 text-white{% else %}bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700{% endif %}">Most Active</a>
   </div>
 </div>
 
 {% if not games %}
-<p class="text-gray-500">No games found. Sync saves or states to see games here.</p>
+<p class="text-gray-500 dark:text-gray-400">No games found. Sync saves or states to see games here.</p>
 {% endif %}
 
 <div class="space-y-2">
 {% for game in games %}
 <a href="/games/{{ game.name | url_encode }}"
-   class="bg-white rounded shadow px-4 py-3 flex items-center gap-4 hover:bg-gray-50 block">
+   class="bg-white dark:bg-gray-800 rounded shadow px-4 py-3 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700 block">
   {% if game.boxart_hash %}
   <img src="/api/blobs/{{ game.boxart_hash }}" class="h-14 w-auto max-w-[3.5rem] object-contain rounded shrink-0" alt="">
   {% else %}
-  <div class="h-14 w-14 bg-gray-100 rounded shrink-0 flex items-center justify-center text-gray-300 text-xl">🎮</div>
+  <div class="h-14 w-14 bg-gray-100 dark:bg-gray-700 rounded shrink-0 flex items-center justify-center text-gray-300 dark:text-gray-500 text-xl">🎮</div>
   {% endif %}
   <div class="min-w-0 flex-1">
     <div class="font-medium truncate">
-      {{ game.base }}{% if game.meta %}<span class="text-gray-400 font-normal"> {{ game.meta }}</span>{% endif %}
+      {{ game.base }}{% if game.meta %}<span class="text-gray-400 dark:text-gray-500 font-normal"> {{ game.meta }}</span>{% endif %}
     </div>
-    <div class="text-xs text-gray-400 mt-0.5 flex gap-3">
+    <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 flex gap-3">
       <span>{{ game.file_count }} file{{ 's' if game.file_count != 1 else '' }}</span>
       <span>{{ game.activity_count }} sync{{ 's' if game.activity_count != 1 else '' }}</span>
       {% if game.last_activity.year > 1970 %}

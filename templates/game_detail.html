@@ -2,33 +2,30 @@
 {% block title %} — {{ base }}{% endblock %}
 {% block content %}
 <div class="mb-4">
-  <a href="/games" class="text-sm text-blue-600 hover:underline">← Games</a>
+  <a href="/games" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">← Games</a>
 </div>
 
-<div class="flex gap-6 items-start mb-6">
-  {# Boxart thumbnails on the left #}
+<div class="mb-6">
+  <h1 class="text-2xl font-bold mb-3">
+    {{ base }}{% if meta %}<span class="text-gray-400 dark:text-gray-500 font-normal text-xl"> {{ meta }}</span>{% endif %}
+  </h1>
   {% if boxarts or snaps or titles %}
-  <div class="flex gap-2 shrink-0">
-    {% for t in boxarts %}<img src="/api/blobs/{{ t.hash }}" class="h-28 rounded shadow cursor-pointer hover:opacity-80" onclick="openLightbox(this.src)" alt="boxart">{% endfor %}
-    {% for t in titles %}<img src="/api/blobs/{{ t.hash }}" class="h-28 rounded shadow cursor-pointer hover:opacity-80" onclick="openLightbox(this.src)" alt="title">{% endfor %}
-    {% for t in snaps %}<img src="/api/blobs/{{ t.hash }}" class="h-28 rounded shadow cursor-pointer hover:opacity-80" onclick="openLightbox(this.src)" alt="snap">{% endfor %}
+  <div class="flex gap-2 overflow-x-auto pb-2" style="-webkit-overflow-scrolling: touch;">
+    {% for t in boxarts %}<img src="/api/blobs/{{ t.hash }}" class="h-28 rounded shadow cursor-pointer hover:opacity-80 shrink-0" onclick="openLightbox(this.src)" alt="boxart">{% endfor %}
+    {% for t in titles %}<img src="/api/blobs/{{ t.hash }}" class="h-28 rounded shadow cursor-pointer hover:opacity-80 shrink-0" onclick="openLightbox(this.src)" alt="title">{% endfor %}
+    {% for t in snaps %}<img src="/api/blobs/{{ t.hash }}" class="h-28 rounded shadow cursor-pointer hover:opacity-80 shrink-0" onclick="openLightbox(this.src)" alt="snap">{% endfor %}
   </div>
   {% endif %}
-  <div>
-    <h1 class="text-2xl font-bold">
-      {{ base }}{% if meta %}<span class="text-gray-400 font-normal text-xl"> {{ meta }}</span>{% endif %}
-    </h1>
-  </div>
 </div>
 
 {# ── Saves ─────────────────────────────────────────────────────────────────── #}
 {% if saves %}
-<h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-4">Saves</h2>
-<div class="bg-white rounded shadow divide-y">
+<h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 mt-4">Saves</h2>
+<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
   {% for f in saves %}
-  <a href="/files/{{ f.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50{% if f.hash == '' %} opacity-40{% endif %}">
+  <a href="/files/{{ f.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700{% if f.hash == '' %} opacity-40{% endif %}">
     <span class="font-mono text-sm break-all{% if f.hash == '' %} line-through{% endif %}">{{ f.display }}</span>
-    <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{% if f.hash == '' %}deleted{% else %}{{ f.hash[:8] }}…{% endif %}</span>
+    <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{% if f.hash == '' %}deleted{% else %}{{ f.hash[:8] }}…{% endif %}</span>
   </a>
   {% endfor %}
 </div>
@@ -36,39 +33,38 @@
 
 {# ── States ────────────────────────────────────────────────────────────────── #}
 {% if states %}
-<h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-6">States</h2>
-<div class="bg-white rounded shadow divide-y">
+<h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 mt-6">States</h2>
+<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
   {% for f in states %}
-  {% if f.path.endswith('.png') %}
-  {# PNG: show inline thumbnail, not a link #}
-  <div class="px-4 py-2 flex items-center gap-3">
-    <img src="/api/blobs/{{ f.hash }}" class="h-10 rounded cursor-pointer hover:opacity-80 shrink-0" onclick="openLightbox(this.src)" alt="">
-    <span class="font-mono text-xs text-gray-400 break-all">{{ f.display }}</span>
-  </div>
-  {% else %}
-  <a href="/files/{{ f.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50">
-    <span class="font-mono text-sm break-all">{{ f.display }}</span>
-    <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{{ f.hash[:8] }}…</span>
+  {% set png_hash = state_png_map.get(f.path) %}
+  <a href="/files/{{ f.path }}" class="px-4 py-2 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700">
+    {% if png_hash %}
+    <img src="/api/blobs/{{ png_hash }}" class="h-10 rounded cursor-pointer hover:opacity-80 shrink-0"
+         onclick="event.preventDefault(); openLightbox(this.src)" alt="">
+    {% else %}
+    <div class="h-10 w-16 shrink-0"></div>
+    {% endif %}
+    <span class="font-mono text-sm break-all flex-1">{{ f.display }}</span>
+    <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{{ f.hash[:8] }}…</span>
   </a>
-  {% endif %}
   {% endfor %}
 </div>
 {% endif %}
 
 {# ── ROMs ──────────────────────────────────────────────────────────────────── #}
 {% if roms %}
-<h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-6">ROMs</h2>
-<div class="bg-white rounded shadow divide-y">
+<h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 mt-6">ROMs</h2>
+<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
   {% for f in roms %}
-  <a href="/files/{{ f.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50">
+  <a href="/files/{{ f.path }}" class="px-4 py-2 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700">
     <span class="font-mono text-sm break-all">{{ f.display }}</span>
-    <span class="font-mono text-xs text-gray-400 ml-4 shrink-0">{{ f.hash[:8] }}…</span>
+    <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{{ f.hash[:8] }}…</span>
   </a>
   {% endfor %}
 </div>
 {% endif %}
 
 {% if not saves and not states and not roms %}
-<p class="text-gray-500 mt-4">No files found for this game.</p>
+<p class="text-gray-500 dark:text-gray-400 mt-4">No files found for this game.</p>
 {% endif %}
 {% endblock %}

@@ -2,14 +2,14 @@
 {% block title %} — {{ path }}{% endblock %}
 {% block content %}
 <div class="mb-4">
-  <a href="/files" class="text-sm text-blue-600 hover:underline">← Files</a>
+  <a href="/files" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">← Files</a>
 </div>
 <h1 class="text-xl font-bold font-mono break-all mb-6">{{ path }}</h1>
 
 {% if not versions %}
-<p class="text-gray-500">No version history found.</p>
+<p class="text-gray-500 dark:text-gray-400">No version history found.</p>
 {% else %}
-<div class="bg-white rounded shadow divide-y">
+<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
 {% for item in versions %}
 {% set v = item.version %}
 {% set device = item.device %}
@@ -23,18 +23,18 @@
     <div class="min-w-0">
       <div class="flex items-center gap-2 mb-1 flex-wrap">
         {% if v.is_canonical %}
-        <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">current</span>
+        <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-2 py-0.5 rounded font-medium">current</span>
         {% endif %}
-        <span class="text-xs text-gray-400">{{ v.received_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
-        <span class="text-xs text-gray-500">{{ device.display_name if device else 'unknown' }}</span>
+        <span class="text-xs text-gray-400 dark:text-gray-500">{{ v.received_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400">{{ device.display_name if device else 'unknown' }}</span>
       </div>
-      <div class="font-mono text-xs text-gray-500 break-all">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
+      <div class="font-mono text-xs text-gray-500 dark:text-gray-400 break-all">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
     </div>
   </div>
   <div class="flex gap-2 shrink-0">
     {% if v.hash and v.hash != '' %}
     <a href="/api/files/{{ path }}/download/{{ v.hash }}"
-       class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded text-xs hover:bg-gray-200">
+       class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
       Download
     </a>
     {% endif %}
