@@ -150,11 +150,11 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
                 except OSError:
                     pass
 
-    def _fmt_size(n: int) -> str:
-        if n < 1024:        return f"{n} B"
-        if n < 1024 ** 2:   return f"{n / 1024:.1f} KB"
-        if n < 1024 ** 3:   return f"{n / 1024 ** 2:.1f} MB"
-        return f"{n / 1024 ** 3:.2f} GB"
+    def _fmt_size(n: int) -> tuple[str, str]:
+        if n < 1024:        return str(n), "B"
+        if n < 1024 ** 2:   return f"{n / 1024:.1f}", "KB"
+        if n < 1024 ** 3:   return f"{n / 1024 ** 2:.1f}", "MB"
+        return f"{n / 1024 ** 3:.2f}", "GB"
 
     def _fmt_date(d) -> str:
         return d.strftime("%b %-d") if d else ""
@@ -285,16 +285,17 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
         context={
             "total_uploads": f"{total_uploads:,}",
             "games_played": f"{games_played:,}",
-            "total_size": _fmt_size(total_size),
+            "total_size_value": _fmt_size(total_size)[0],
+            "total_size_unit": _fmt_size(total_size)[1],
             "total_gaming_days": f"{total_gaming_days:,}",
-            "first_gaming_day": first_gaming_day,
+            "first_gaming_day": _fmt_date(upload_dates[0]) if upload_dates else "",
             "streak_icon": _streak_icon(current_streak),
             "current_streak": current_streak,
             "current_streak_start": _fmt_date(current_streak_start),
             "current_streak_end": _fmt_date(current_streak_end),
             "longest_streak": longest_streak,
-            "longest_streak_start": _fmt_date_long(longest_streak_start),
-            "longest_streak_end": _fmt_date_long(longest_streak_end),
+            "longest_streak_start": _fmt_date(longest_streak_start),
+            "longest_streak_end": _fmt_date(longest_streak_end),
             "recent_sync": recent_sync,
             "recent_games": recent_games,
         },

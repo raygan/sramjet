@@ -28,48 +28,54 @@
 
 {# ── Overview stats ─────────────────────────────────────────────────────────── #}
 <div class="bg-white dark:bg-gray-800 rounded shadow mb-4">
-  <div class="grid grid-cols-3 divide-x divide-gray-200 dark:divide-gray-700 py-6">
-    <div class="text-center px-4">
-      <div class="text-3xl font-bold">{{ total_uploads }}</div>
-      <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Total Uploads</div>
+  <div class="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
+    <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Stats</h2>
+  </div>
+  <div class="grid grid-cols-3 divide-x divide-gray-200 dark:divide-gray-700 py-5">
+    <div class="text-center px-3">
+      <div class="text-2xl font-bold">{{ total_uploads }}</div>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Uploads</div>
     </div>
-    <div class="text-center px-4">
-      <div class="text-3xl font-bold">{{ games_played }}</div>
-      <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Games Played</div>
+    <div class="text-center px-3">
+      <div class="text-2xl font-bold">{{ games_played }}</div>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Games Played</div>
     </div>
-    <div class="text-center px-4">
-      <div class="text-3xl font-bold">{{ total_size }}</div>
-      <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">On Disk</div>
+    <div class="text-center px-3">
+      <div class="text-2xl font-bold leading-none">{{ total_size_value }}<span class="text-sm font-normal text-gray-500 dark:text-gray-400"> {{ total_size_unit }}</span></div>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">On Disk</div>
     </div>
   </div>
 </div>
 
 {# ── Streak card ────────────────────────────────────────────────────────────── #}
 <div class="bg-white dark:bg-gray-800 rounded shadow mb-4">
-  <div class="grid grid-cols-3 divide-x divide-gray-200 dark:divide-gray-700 py-6">
-    {# Days played #}
-    <div class="px-6 text-center flex flex-col justify-center">
-      <div class="text-3xl font-bold">{{ total_gaming_days }}</div>
-      <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Days Played</div>
+  <div class="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
+    <h2 class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Streaks</h2>
+  </div>
+  <div class="grid grid-cols-3 divide-x divide-gray-200 dark:divide-gray-700">
+    {# Days played — number aligned with circle center via mt-14 #}
+    <div class="px-3 pt-4 pb-5 text-center">
+      <div class="mt-14 text-2xl font-bold">{{ total_gaming_days }}</div>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Days Played</div>
       {% if first_gaming_day %}
-      <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ first_gaming_day }} – Present</div>
+      <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ first_gaming_day }} – now</div>
       {% endif %}
     </div>
-    {# Current streak — focal point #}
-    <div class="px-6 flex flex-col items-center">
-      <img src="{{ streak_icon }}" class="h-12 w-12 mb-2" alt="">
-      <div class="w-24 h-24 rounded-full border-4 {% if current_streak > 0 %}border-orange-400 dark:border-orange-500{% else %}border-gray-200 dark:border-gray-600{% endif %} flex items-center justify-center mb-3">
+    {# Current streak — icon overlaps top of ring #}
+    <div class="px-3 pt-4 pb-5 flex flex-col items-center">
+      <img src="{{ streak_icon }}" class="h-10 w-10 mb-[-1rem] relative z-10" alt="">
+      <div class="w-24 h-24 rounded-full border-4 {% if current_streak > 0 %}border-orange-400 dark:border-orange-500{% else %}border-gray-200 dark:border-gray-600{% endif %} flex items-center justify-center mb-2">
         <span class="text-3xl font-bold">{{ current_streak }}</span>
       </div>
       <div class="font-semibold text-sm {% if current_streak > 0 %}text-orange-500 dark:text-orange-400{% else %}text-gray-400 dark:text-gray-500{% endif %}">Current Streak</div>
-      <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+      <div class="text-xs text-gray-400 dark:text-gray-500 mt-0.5 text-center">
         {% if current_streak > 0 and current_streak_start %}{{ current_streak_start }} – {{ current_streak_end }}{% else %}No active streak{% endif %}
       </div>
     </div>
-    {# Longest streak #}
-    <div class="px-6 text-center flex flex-col justify-center">
-      <div class="text-3xl font-bold">{{ longest_streak }}</div>
-      <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">Longest Streak</div>
+    {# Longest streak — same mt-14 alignment #}
+    <div class="px-3 pt-4 pb-5 text-center">
+      <div class="mt-14 text-2xl font-bold">{{ longest_streak }}</div>
+      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Longest Streak</div>
       {% if longest_streak_start %}
       <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">{{ longest_streak_start }} – {{ longest_streak_end }}</div>
       {% endif %}
