@@ -2,17 +2,14 @@
 
 ## Project Summary
 
-A self-hosted WebDAV server acting as a smart RetroArch cloud sync backend. Supports per-device routing, conflict detection, file versioning, content-addressable storage, and a minimal web dashboard.
+A self-hosted WebDAV server acting as a smart RetroArch cloud sync backend. Supports per-device routing, conflict detection, file versioning, content-addressable storage, and a web dashboard.
 
-**Spec**: `sramjet-spec.md`  
-**Stack**: FastAPI + SQLite (SQLAlchemy async) + Jinja2 + Tailwind CSS + Docker
+**Stack**: FastAPI + SQLite (SQLAlchemy async) + Jinja2 + Tailwind CSS (CDN) + Docker
 
 ## Development Phases
 
-- **Phase 1**: Working sync backend + minimal dashboard. Complete when test plan in spec passes.
-- **Phase 2**: UI polish (only after Phase 1 is validated with real devices).
-
-Do NOT polish the UI or add features beyond what's needed for the current phase.
+- **Phase 1**: Working sync backend + functional dashboard. ✅ Complete — validated with real devices.
+- **Phase 2**: UI polish and quality of life. ✅ Underway — dark mode, icons, timeline improvements, homepage redesign, streak tracker done.
 
 ---
 
@@ -62,33 +59,77 @@ Source files read: `network/cloud_sync/webdav.c`, `tasks/task_cloudsync.c`, `net
 
 ### Auth
 
-RetroArch supports HTTP Basic and Digest auth. For Phase 1, no auth is needed (trusted local network per spec). Keep the door open for adding it later.
+RetroArch supports HTTP Basic and Digest auth. No auth implemented yet (trusted local network). Keep the door open for adding it later.
 
 ### Ignored Files
 
-RetroArch never uploads: `config/retroarch.cfg`, `config/content_*.lpl`, `.DS_Store`. We don't need to handle these specially, but don't be surprised if they're absent.
+RetroArch never uploads: `config/retroarch.cfg`, `config/content_*.lpl`, `.DS_Store`.
 
 ---
 
-## Architecture Decisions (design gaps resolved)
+## Architecture Decisions
 
-### Gap 1 — Multi-device conflicts
+### Multi-device conflicts
 
-If a file already has an unresolved conflict, any further uploads of that file are rejected with 409. The conflicts table tracks exactly two competing versions (device_a vs device_b). The first two conflicting uploads define the conflict; subsequent attempts are blocked until resolved. This keeps the schema simple without losing correctness.
+If a file already has an unresolved conflict, any further uploads of that file are rejected with 409. The conflicts table tracks exactly two competing versions (device_a vs device_b). The first two conflicting uploads define the conflict; subsequent attempts are blocked until resolved.
 
-### Gap 2 — Sync event boundaries
+### Sync event boundaries
 
 - **Start**: The OPTIONS request opens a new sync event for that device.
 - **End**: The manifest PUT (`manifest.server`) closes the sync event and records final stats.
 - Events older than `SYNC_EVENT_WINDOW_SECONDS` (default 30s) with no activity are also auto-closed by the next OPTIONS.
+- Events from the same device within 10 seconds of each other are merged in the dashboard (RetroArch's concurrent connections often split one logical sync).
 
-### Gap 3 — First upload of a path (no prior canonical)
+### First upload of a path
 
-First-upload-wins. The first PUT for any path immediately becomes canonical. If a second device then PUTs a different version before the first device's manifest is accepted, that triggers a conflict. There is no "canonical doesn't exist yet" ambiguity — the first write establishes canonical.
+First-upload-wins. The first PUT for any path immediately becomes canonical. If a second device PUTs a different version before the first device's manifest is accepted, that triggers a conflict.
 
-### Gap 4 — Manifest rejection idempotency
+### Manifest rejection idempotency
 
 Before creating a conflict record, the engine checks for an existing unresolved conflict for the same `file_path`. If one exists, it updates rather than inserts, preventing duplicate rows from RetroArch retries.
+
+---
+
+## Dashboard Conventions
+
+### Jinja2 filters (defined in `app/dashboard/router.py`)
+
+| Filter | Purpose |
+|---|---|
+| `basename` | Last path segment |
+| `dirname` | Everything before the last `/` |
+| `url_encode` | URL-safe encoding for game names in hrefs |
+| `state_slot` | Returns "Auto", "Slot 0", "Slot 1"… for state file paths; None for non-states |
+| `is_save_file` | True for .srm/.sav/.mcr/.fla/.rtc |
+| `is_rom_file` | True for ROM extensions |
+
+### Dark mode
+
+Uses Tailwind `class` strategy. A `<script>` in `<head>` adds `dark` to `<html>` unless the device explicitly prefers light. Defaults to dark when preference is unknown. Config after CDN: `tailwind.config = { darkMode: 'class' }`.
+
+### Icons (all in `static/icons/`)
+
+| File | Used for |
+|---|---|
+| `jet.png` | App icon, favicon, navbar |
+| `diskette.png` | Save files in lists |
+| `game-cartridge.png` | ROM files in lists |
+| `streak-0.png` | Broken / zero-day streak |
+| `streak-1.png` | 1-day streak |
+| `streak-2.png` | 2–4 day streak |
+| `streak-3.png` | 5–10 day streak |
+| `streak-4.png` | 11–21 day streak |
+| `streak-sword.png` | 22+ day streak |
+
+### Pill components
+
+Defined as Jinja2 macros **locally in each template** (not shared across templates):
+- `slot_badge(path)` — amber for "Auto", blue for numbered slots
+- `action_pill(action)` — green ↑ upload, purple ↓ download, red ✕ delete, amber ⚠ conflict
+
+### Pitfall: Jinja2 dict key `items`
+
+Never use `"items"` as a key in a dict passed to a template. Jinja2 resolves `section.items` as Python's built-in `dict.items()` method, not the key. Use `"versions"`, `"entries"`, etc. instead.
 
 ---
 
@@ -96,36 +137,44 @@ Before creating a conflict record, the engine checks for an existing unresolved 
 
 ```
 app/
-  config.py          — env vars, paths, constants
+  config.py          — env vars, paths, constants (DATA_DIR, STORE_DIR, etc.)
   database.py        — async SQLAlchemy engine + session
   models.py          — ORM models
-  main.py            — FastAPI app, startup, router registration
-  store.py           — content-addressable file store (hash-based)
+  main.py            — FastAPI app, startup, router registration, static mount
+  store.py           — content-addressable blob store (STORE_DIR/{hash[:2]}/{hash}.bin)
   manifest.py        — manifest parse/serialize/diff utilities
   sync/
     engine.py        — core sync logic: conflict detection, versioning, canonical updates
     events.py        — sync event lifecycle (open/close/record)
+    quarantine.py    — per-device directory quarantine
   webdav/
     router.py        — FastAPI router: OPTIONS, GET, PUT, DELETE, MKCOL, MOVE
   api/
-    router.py        — FastAPI router: REST API for dashboard
+    router.py        — FastAPI router: REST API (blob serving, ZIP download, etc.)
   dashboard/
-    router.py        — FastAPI router: Jinja2 pages
-templates/           — Jinja2 HTML templates
-tests/               — pytest test suite
-docker/              — Dockerfile, docker-compose.yml
+    router.py        — FastAPI router: all Jinja2 page routes + Jinja2 filters
+static/
+  icons/             — app icons (jet, diskette, game-cartridge, streak-*)
+  site.webmanifest   — PWA manifest
+templates/           — Jinja2 HTML templates (all extend base.html)
+tests/               — pytest suite (covers WebDAV/sync backend; not dashboard routes)
+docker/
+  Dockerfile         — copies app/, templates/, static/ into image
+  docker-compose.yml
 ```
 
-## Running Locally (development)
+> **Dockerfile note**: If a new top-level directory is added and referenced at startup, add a `COPY <dir>/ <dir>/` line to `docker/Dockerfile` in the same commit or the container will crash.
+
+---
+
+## Running Locally
 
 ```bash
 pip install -e ".[dev]"
 DATA_DIR=./data uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
 ```
 
-`--host 0.0.0.0` is required to accept connections from other devices (phone, iPad, etc.).
-Without it, uvicorn defaults to `127.0.0.1` (localhost only) and RetroArch on other devices
-will fail silently with "completed with failures".
+`--host 0.0.0.0` is required to accept connections from other devices. Without it RetroArch on other devices fails silently with "completed with failures".
 
 ## Running Tests
 
@@ -133,8 +182,10 @@ will fail silently with "completed with failures".
 pytest
 ```
 
+Run before committing. The test suite covers the sync backend; dashboard route bugs require code review.
+
 ## Docker
 
 ```bash
-docker compose -f docker/docker-compose.yml up
+docker compose -f docker/docker-compose.yml up -d --build
 ```
