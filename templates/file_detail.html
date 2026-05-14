@@ -23,7 +23,7 @@
   <div class="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
 </div>
 <div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
-{% for item in section.items %}
+{% for item in section.versions %}
 {% set v = item.version %}
 {% set device = item.device %}
 {% set png_hash = version_pngs.get(v.hash) %}

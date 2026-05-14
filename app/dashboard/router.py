@@ -530,8 +530,8 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
     sections: list[dict] = []
     def _add(title: str, item: dict) -> None:
         if not sections or sections[-1]["title"] != title:
-            sections.append({"title": title, "items": []})
-        sections[-1]["items"].append(item)
+            sections.append({"title": title, "versions": []})
+        sections[-1]["versions"].append(item)
 
     for item in enriched:
         t = item["version"].received_at.replace(tzinfo=timezone.utc)
