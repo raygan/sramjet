@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir fastapi "uvicorn[standard]" sqlalchemy aiosqlite 
 # Copy source and install the package itself (no-deps since already installed above)
 COPY app/ app/
 COPY templates/ templates/
+COPY static/ static/
 RUN pip install --no-cache-dir --no-deps .
 
 ENV DATA_DIR=/data
