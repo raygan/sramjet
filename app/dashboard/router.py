@@ -730,6 +730,11 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
     )
 
 
+@router.get("/help", response_class=HTMLResponse)
+async def dashboard_help(request: Request):
+    return templates.TemplateResponse("help.html", {"request": request})
+
+
 @router.post("/files/{path:path}/revert/{version_id}")
 async def dashboard_revert_file(path: str, version_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(

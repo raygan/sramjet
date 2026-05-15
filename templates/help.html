@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %} — Help{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Help</h1>
+
+{# ── Section macro ─────────────────────────────────────────────────────────── #}
+{% macro section(id, title) %}
+<details class="bg-white dark:bg-gray-800 rounded shadow mb-3 group" id="{{ id }}">
+  <summary class="px-4 py-3 cursor-pointer flex justify-between items-center list-none select-none">
+    <span class="font-semibold text-base">{{ title }}</span>
+    <span class="text-gray-400 dark:text-gray-500 text-lg transition-transform group-open:rotate-180">⌃</span>
+  </summary>
+  <div class="px-5 pb-5 pt-2 space-y-4 text-sm text-gray-700 dark:text-gray-300 border-t border-gray-100 dark:border-gray-700">
+    {{ caller() }}
+  </div>
+</details>
+{% endmacro %}
+
+{# ── Setting up a New Device ───────────────────────────────────────────────── #}
+{% call section("setup", "Setting Up a New Device") %}
+
+<h3 class="font-semibold text-gray-900 dark:text-gray-100">Settings › Saving</h3>
+<p><strong>Sort Saves and States into folders by core name</strong> — leave this enabled (it's the default). SRAMjet uses the folder structure to group files by game in the dashboard. All devices must use the same setting, or the same game's files will appear under different names on different devices.</p>
+
+<p><strong>Sort Saves by Content Directory</strong> organizes saves by ROM folder name instead of core name, which will conflict with the core-name grouping used by default on most devices. <strong>Write Saves to Content Dir</strong> moves saves out of the <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">saves/</code> folder entirely and stores them alongside your ROMs. Both must be disabled (the default).</p>
+
+<h3 class="font-semibold text-gray-900 dark:text-gray-100 pt-2">Settings › Saving › Cloud Sync</h3>
+<div class="overflow-x-auto">
+  <table class="w-full text-sm border-collapse">
+    <thead>
+      <tr class="text-left text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+        <th class="pb-2 pr-6 font-medium">Setting</th>
+        <th class="pb-2 font-medium">Value</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+      <tr><td class="py-2 pr-6 font-medium">Enable Cloud Syncing</td><td class="py-2">On</td></tr>
+      <tr><td class="py-2 pr-6 font-medium">Sync Saves/States</td><td class="py-2">On</td></tr>
+      <tr><td class="py-2 pr-6 font-medium">Sync Config Files</td><td class="py-2">Optional</td></tr>
+      <tr><td class="py-2 pr-6 font-medium">Sync Thumbnails</td><td class="py-2">Optional — required for box art in the SRAMjet dashboard</td></tr>
+      <tr><td class="py-2 pr-6 font-medium">Sync System Files</td><td class="py-2">Optional</td></tr>
+      <tr><td class="py-2 pr-6 font-medium">Cloud Sync Backend</td><td class="py-2">WebDAV</td></tr>
+      <tr><td class="py-2 pr-6 font-medium">Cloud Sync URL</td><td class="py-2 font-mono">http://your-server:8080/sync/device-name/</td></tr>
+      <tr><td class="py-2 pr-6 font-medium">Username / Password</td><td class="py-2">Leave blank</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p><strong>Use a unique device name for each device.</strong> SRAMjet registers new devices automatically on first sync. The name appears in the dashboard and is used to track which device last touched each file.</p>
+
+<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-4 py-3 text-amber-800 dark:text-amber-300">
+  <strong>Security:</strong> SRAMjet has no authentication. Do not expose it directly to the internet. Run it on a private network, or use a VPN like <a href="https://tailscale.com" class="underline" target="_blank" rel="noopener">Tailscale</a> or a zero-trust tunnel like <a href="https://www.cloudflare.com/zero-trust/" class="underline" target="_blank" rel="noopener">Cloudflare Access</a>.
+</div>
+
+{% endcall %}
+
+{# ── Resolving Sync Conflicts ──────────────────────────────────────────────── #}
+{% call section("conflicts", "Resolving Sync Issues") %}
+
+<h3 class="font-semibold text-gray-900 dark:text-gray-100">My device has an updated save but it isn't uploading</h3>
+<p>RetroArch performs its own conflict check before uploading. If it detects that both the local file and the server file have changed since the last sync, it will refuse to upload and report <em>"cloud sync completed with conflicts"</em> — even if the server would have accepted the file just fine.</p>
+<p><strong>Fix:</strong> Go to the <a href="/devices" class="text-blue-600 dark:text-blue-400 hover:underline">Devices</a> page and click <strong>Trust Next Sync</strong> for that device. On the next sync, RetroArch will treat the server as a clean slate and re-upload all local files unconditionally. The flag clears automatically once the sync completes.</p>
+
+<h3 class="font-semibold text-gray-900 dark:text-gray-100 pt-2">The server has a newer save but my device isn't downloading it</h3>
+<p>The same client-side conflict check can block downloads too. If RetroArch sees that both local and server have changed since it last synced, it may skip the download entirely.</p>
+<ul class="list-disc pl-5 space-y-1">
+  <li><strong>If you want the local version to win</strong> — use <strong>Trust Next Sync</strong>. The device will re-upload its local files and they'll become the new canonical versions on the server.</li>
+  <li><strong>If you want the server version to win</strong> — go to <a href="/files" class="text-blue-600 dark:text-blue-400 hover:underline">Files</a>, find the save, and click <strong>Revert</strong> on the version you want to restore. Then sync the device normally. If it's still stuck, use Trust Next Sync after the revert.</li>
+</ul>
+
+<h3 class="font-semibold text-gray-900 dark:text-gray-100 pt-2">How SRAMjet handles conflicts</h3>
+<p class="text-gray-500 dark:text-gray-400">Standard WebDAV servers have no awareness of sync conflicts — they just store whatever is uploaded. RetroArch's conflict detection is entirely client-side, with no way for the server to communicate resolution hints back.</p>
+<p class="text-gray-500 dark:text-gray-400">SRAMjet resolves this by tracking full version history and using <strong>last-write-wins</strong>: whichever device uploads a file last becomes the canonical version, and the displaced version is kept in history so you can revert if needed. The server never gets into a stuck state.</p>
+<p class="text-gray-500 dark:text-gray-400">The <strong>Trust Next Sync</strong> feature works by serving an empty manifest to the affected device. RetroArch interprets an empty manifest as a server that has been reset and unconditionally re-uploads all local files, bypassing its client-side conflict logic. Under the hood, this is the same path RetroArch uses on a brand-new device's first sync.</p>
+
+{% endcall %}
+
+{# ── Syncing ROMs ──────────────────────────────────────────────────────────── #}
+{% call section("roms", "Syncing ROMs") %}
+
+<p>RetroArch's cloud sync is not designed for ROMs. It works best when the total file size is small — large ROM libraries will make every sync slow and can time out.</p>
+<p>That said, if you set up new devices often or want a small shared collection available everywhere, a practical workaround is to create a subfolder inside RetroArch's <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">system/</code> directory:</p>
+<pre class="bg-gray-100 dark:bg-gray-700 rounded px-4 py-3 font-mono text-xs overflow-x-auto">retroarch/system/roms/NES/
+retroarch/system/roms/GB/</pre>
+<p>Enable <strong>Sync System Files</strong> on any device where you want access to these ROMs. SRAMjet will store them and serve them to other devices that have system file syncing on. Keep this collection small — a few dozen files at most.</p>
+
+{% endcall %}
+
+{% endblock %}

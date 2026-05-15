@@ -13,7 +13,7 @@ A self-hosted WebDAV server built specifically for RetroArch's Cloud Sync featur
 - Per-device routing (`/sync/{device-name}/`) with automatic device registration on first sync
 - Conflict detection: when two devices upload diverging versions of the same file, the manifest is rejected (HTTP 409) and the conflict is flagged in the dashboard
 - Content-addressable storage — identical files are stored exactly once regardless of how many devices upload them
-- Full version history for saves and states; configurable retention limits for system and thumbnail files
+- Full version history with configurable retention limits per file category (saves, states, system, thumbnails)
 - File-level revert to any previous version from the dashboard
 
 **Dashboard**
@@ -56,6 +56,8 @@ volumes:
 | `DISPLAY_TZ` | `America/Chicago` | Timezone for dashboard timestamps |
 | `SYSTEM_VERSION_LIMIT` | `5` | Versions to keep for `system/` files |
 | `THUMBNAIL_VERSION_LIMIT` | `3` | Versions to keep for `thumbnails/` files |
+| `SAVES_VERSION_LIMIT` | `0` | Versions to keep for `saves/` files — `0` means unlimited |
+| `STATES_VERSION_LIMIT` | `0` | Versions to keep for `states/` files — `0` means unlimited |
 | `SYNC_EVENT_WINDOW_SECONDS` | `30` | Events within this window from the same device are merged |
 
 ---
