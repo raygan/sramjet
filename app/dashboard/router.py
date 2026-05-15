@@ -216,12 +216,11 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
             .order_by(SyncEventFile.file_path)
         )
         files = files_result.scalars().all()
-        file_paths_in_event = {f.file_path for f in files}
         png_map: dict[str, str] = {}
         for f in files:
             if f.file_path.endswith(".png") and f.action == "uploaded":
                 state_path = f.file_path[:-4]
-                if state_path in file_paths_in_event:
+                if state_path.startswith("states/"):
                     png_map[state_path] = f.hash
         display_files = [f for f in files if not f.file_path.endswith(".png")]
         recent_sync = {
@@ -353,11 +352,10 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
 
         png_map = {}
         paired_png_paths = set()
-        file_paths_in_event = {f.file_path for f in files}
         for f in files:
             if f.file_path.endswith(".png") and f.action == "uploaded":
                 state_path = f.file_path[:-4]
-                if state_path in file_paths_in_event:
+                if state_path.startswith("states/"):
                     png_map[state_path] = f.hash
                     paired_png_paths.add(f.file_path)
 
@@ -401,7 +399,7 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
             for f in combined_files:
                 if f.file_path.endswith(".png") and f.action == "uploaded":
                     state_path = f.file_path[:-4]
-                    if state_path in combined_file_paths:
+                    if state_path.startswith("states/"):
                         combined_png_map[state_path] = f.hash
                         combined_paired.add(f.file_path)
             combined_display = [f for f in combined_files if not f.file_path.endswith(".png")]
