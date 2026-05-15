@@ -82,7 +82,7 @@
           {% elif f.file_path | is_rom_file %}
           <img src="/static/icons/game-cartridge.png" class="h-10 w-10" alt="">
           {% elif f.file_path | state_slot %}
-          <img src="/static/icons/videogame.png" class="h-10 w-10 opacity-40" alt="">
+          <img src="/static/icons/videogame.png" class="h-10 w-10" alt="">
           {% endif %}
         </div>
         {{ action_pill(f.action) }}
@@ -110,7 +110,7 @@
               {% elif f.file_path | is_rom_file %}
               <img src="/static/icons/game-cartridge.png" class="h-10 w-10" alt="">
               {% elif f.file_path | state_slot %}
-              <img src="/static/icons/videogame.png" class="h-10 w-10 opacity-40" alt="">
+              <img src="/static/icons/videogame.png" class="h-10 w-10" alt="">
               {% endif %}
             </div>
             {{ action_pill(f.action) }}
