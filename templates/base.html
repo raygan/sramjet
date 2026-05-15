@@ -19,16 +19,38 @@
   <script>tailwind.config = { darkMode: 'class' }</script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col">
-  <nav class="bg-gray-800 text-white px-4 py-2 flex items-center gap-6 text-sm sticky top-0 z-50">
-    <a href="/" class="flex items-center gap-2 font-bold hover:text-gray-300">
-      <img src="/static/icons/jet.png" alt="SRAMjet" class="w-7 h-7">
-      SRAMjet
-    </a>
-    <a href="/timeline" class="hover:text-gray-300">Timeline</a>
-    <a href="/games" class="hover:text-gray-300">Games</a>
-    <a href="/devices" class="hover:text-gray-300">Devices</a>
-    <a href="/files" class="hover:text-gray-300">Files</a>
-    <a href="/help" class="hover:text-gray-300 ml-auto">Help</a>
+  <nav class="bg-gray-800 text-white sticky top-0 z-50">
+    <div class="px-4 py-2 flex items-center gap-6 text-sm">
+      <a href="/" class="flex items-center gap-2 font-bold hover:text-gray-300 shrink-0">
+        <img src="/static/icons/jet.png" alt="SRAMjet" class="w-7 h-7">
+        SRAMjet
+      </a>
+      <!-- Desktop links -->
+      <div class="hidden sm:flex items-center gap-6 flex-1">
+        <a href="/timeline" class="hover:text-gray-300">Timeline</a>
+        <a href="/games" class="hover:text-gray-300">Games</a>
+        <a href="/devices" class="hover:text-gray-300">Devices</a>
+        <a href="/files" class="hover:text-gray-300">Files</a>
+        <a href="/help" class="hover:text-gray-300 ml-auto">Help</a>
+      </div>
+      <!-- Mobile hamburger -->
+      <button class="sm:hidden ml-auto p-1 rounded hover:bg-gray-700 focus:outline-none"
+              onclick="document.getElementById('mobile-menu').classList.toggle('hidden')"
+              aria-label="Toggle menu">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+    </div>
+    <!-- Mobile dropdown -->
+    <div id="mobile-menu" class="hidden sm:hidden border-t border-gray-700 px-4 py-2 flex flex-col text-sm">
+      <a href="/timeline" class="py-2 hover:text-gray-300">Timeline</a>
+      <a href="/games"    class="py-2 hover:text-gray-300">Games</a>
+      <a href="/devices"  class="py-2 hover:text-gray-300">Devices</a>
+      <a href="/files"    class="py-2 hover:text-gray-300">Files</a>
+      <a href="/help"     class="py-2 hover:text-gray-300">Help</a>
+    </div>
   </nav>
   <main class="max-w-4xl mx-auto px-4 py-6 flex-1 w-full">
     {% block content %}{% endblock %}
