@@ -4,8 +4,8 @@ WORKDIR /app
 
 # Install dependencies first — separate layer so rebuilds are fast when only code changes
 COPY pyproject.toml .
-RUN pip install --no-cache-dir fastapi "uvicorn[standard]" sqlalchemy aiosqlite \
-    jinja2 python-multipart lxml aiofiles
+RUN pip install --no-cache-dir "fastapi==0.136.1" "uvicorn[standard]" "sqlalchemy" "aiosqlite" \
+    "jinja2==3.1.6" "python-multipart" "lxml" "aiofiles"
 
 # Copy source and install the package itself (no-deps since already installed above)
 COPY app/ app/
