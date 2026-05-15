@@ -216,12 +216,15 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
             .order_by(SyncEventFile.file_path)
         )
         files = files_result.scalars().all()
-        png_map: dict[str, str] = {}
-        for f in files:
-            if f.file_path.endswith(".png") and f.action == "uploaded":
-                state_path = f.file_path[:-4]
-                if state_path.startswith("states/"):
-                    png_map[state_path] = f.hash
+        # Build png_map from the canonical manifest so we always have the current
+        # screenshot even if the PNG was uploaded in a different (concurrent) event.
+        canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+        canonical_dict = mf.to_dict(canonical)
+        png_map: dict[str, str] = {
+            path[:-4]: hash_val
+            for path, hash_val in canonical_dict.items()
+            if path.endswith(".png") and path.startswith("states/") and hash_val
+        }
         display_files = [f for f in files if not f.file_path.endswith(".png")]
         recent_sync = {
             "event": recent_event,
