@@ -732,7 +732,7 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
 
 @router.get("/help", response_class=HTMLResponse)
 async def dashboard_help(request: Request):
-    return templates.TemplateResponse("help.html", {"request": request})
+    return templates.TemplateResponse(request, "help.html")
 
 
 @router.post("/files/{path:path}/revert/{version_id}")
