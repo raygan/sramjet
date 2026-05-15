@@ -53,7 +53,7 @@
     <img src="/api/blobs/{{ png_hash }}" class="h-10 rounded cursor-pointer hover:opacity-80 shrink-0"
          onclick="event.preventDefault(); openLightbox(this.src)" alt="">
     {% else %}
-    <div class="h-10 w-16 shrink-0"></div>
+    <img src="/static/icons/videogame.png" class="h-10 w-10 shrink-0 opacity-40" alt="">
     {% endif %}
     {{ slot_badge(f.path) }}
     <span class="font-mono text-sm break-all flex-1">{{ f.display }}</span>
