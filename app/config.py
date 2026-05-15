@@ -14,22 +14,25 @@ CANONICAL_MANIFEST = MANIFESTS_DIR / "canonical.json"
 
 DATABASE_URL = f"sqlite+aiosqlite:///{DATA_DIR}/sramjet.db"
 
-# Versioning retention limits (number of old versions kept)
+# Versioning retention limits (number of old versions kept; 0 = unlimited)
 SYSTEM_VERSION_LIMIT = int(os.environ.get("SYSTEM_VERSION_LIMIT", "5"))
 THUMBNAIL_VERSION_LIMIT = int(os.environ.get("THUMBNAIL_VERSION_LIMIT", "3"))
+SAVES_VERSION_LIMIT = int(os.environ.get("SAVES_VERSION_LIMIT", "0"))
+STATES_VERSION_LIMIT = int(os.environ.get("STATES_VERSION_LIMIT", "0"))
 
 # Sync event grouping — requests within this many seconds of each other
 # from the same device are grouped into one sync event.
 SYNC_EVENT_WINDOW_SECONDS = int(os.environ.get("SYNC_EVENT_WINDOW_SECONDS", "30"))
 
-# Directories that get full version history
-FULL_HISTORY_DIRS = {"saves", "states", "config"}
-
-# Directories with limited history
-LIMITED_HISTORY_DIRS = {
+# Directories with limited history (limit=0 means unlimited — not added to dict)
+LIMITED_HISTORY_DIRS: dict[str, int] = {
     "system": SYSTEM_VERSION_LIMIT,
     "thumbnails": THUMBNAIL_VERSION_LIMIT,
 }
+if SAVES_VERSION_LIMIT > 0:
+    LIMITED_HISTORY_DIRS["saves"] = SAVES_VERSION_LIMIT
+if STATES_VERSION_LIMIT > 0:
+    LIMITED_HISTORY_DIRS["states"] = STATES_VERSION_LIMIT
 
 
 DISPLAY_TZ = ZoneInfo(os.environ.get("DISPLAY_TZ", "America/Chicago"))
