@@ -29,10 +29,9 @@ def _patch_paths(monkeypatch, tmp_path: Path) -> None:
     manifests_dir = tmp_path / "manifests"
     snapshots_dir = manifests_dir / "snapshots"
     devices_dir = tmp_path / "devices"
-    conflicts_dir = tmp_path / "conflicts"
     canonical = manifests_dir / "canonical.json"
 
-    for d in (store_dir, snapshots_dir, devices_dir, conflicts_dir):
+    for d in (store_dir, snapshots_dir, devices_dir):
         d.mkdir(parents=True, exist_ok=True)
 
     monkeypatch.setattr(app_config, "DATA_DIR", tmp_path)
@@ -40,7 +39,6 @@ def _patch_paths(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(app_config, "MANIFESTS_DIR", manifests_dir)
     monkeypatch.setattr(app_config, "SNAPSHOTS_DIR", snapshots_dir)
     monkeypatch.setattr(app_config, "DEVICES_DIR", devices_dir)
-    monkeypatch.setattr(app_config, "CONFLICTS_DIR", conflicts_dir)
     monkeypatch.setattr(app_config, "CANONICAL_MANIFEST", canonical)
     # app.store and app.sync.engine reference app.config attributes at call time,
     # so patching app_config above propagates automatically.

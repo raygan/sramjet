@@ -8,7 +8,6 @@ STORE_DIR = DATA_DIR / "store"
 MANIFESTS_DIR = DATA_DIR / "manifests"
 SNAPSHOTS_DIR = MANIFESTS_DIR / "snapshots"
 DEVICES_DIR = DATA_DIR / "devices"
-CONFLICTS_DIR = DATA_DIR / "conflicts"
 
 CANONICAL_MANIFEST = MANIFESTS_DIR / "canonical.json"
 
@@ -39,5 +38,5 @@ DISPLAY_TZ = ZoneInfo(os.environ.get("DISPLAY_TZ", "America/Chicago"))
 
 
 def ensure_dirs() -> None:
-    for d in (STORE_DIR, SNAPSHOTS_DIR, DEVICES_DIR, CONFLICTS_DIR):
+    for d in (STORE_DIR, SNAPSHOTS_DIR, DEVICES_DIR):
         d.mkdir(parents=True, exist_ok=True)

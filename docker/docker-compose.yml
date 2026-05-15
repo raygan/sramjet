@@ -4,12 +4,13 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     ports:
-      - "8088:8080"
+      - "8080:8080"
     volumes:
-      - /mnt/user/docker/appdata/sramjet:/data
+      - ./data:/data
     environment:
       - SYSTEM_VERSION_LIMIT=5
       - THUMBNAIL_VERSION_LIMIT=3
-      - TZ=America/Chicago
-      - DISPLAY_TZ=America/Chicago
+      # Set to your local timezone for dashboard timestamps.
+      # See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+      - DISPLAY_TZ=UTC
     restart: unless-stopped

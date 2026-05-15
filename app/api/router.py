@@ -19,6 +19,13 @@ from app.store import read_blob
 router = APIRouter(prefix="/api")
 
 
+# ─── Health ───────────────────────────────────────────────────────────────────
+
+@router.get("/health")
+async def health() -> dict:
+    return {"status": "ok"}
+
+
 # ─── Devices ──────────────────────────────────────────────────────────────────
 
 
