@@ -11,11 +11,70 @@
   </summary>
   <div class="px-5 pb-5 pt-3 space-y-4 text-sm text-gray-700 dark:text-gray-300 border-t border-gray-100 dark:border-gray-700">
 
-    <h3 class="font-semibold text-gray-900 dark:text-gray-100">Settings › Saving</h3>
-    <p><strong>Sort Saves and States into folders by core name</strong> — leave this enabled (it's the default). SRAMjet uses the folder structure to group files by game in the dashboard. All devices must use the same setting, or the same game's files will appear under different names on different devices.</p>
-    <p><strong>Sort Saves by Content Directory</strong> organizes saves by ROM folder name instead of core name, which will conflict with the core-name grouping used by default on most devices. <strong>Write Saves to Content Dir</strong> moves saves out of the <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">saves/</code> folder entirely and stores them alongside your ROMs. Both must be disabled (the default).</p>
+    <p>Adding a device to sync doesn't require any server-side setup and most RetroArch settings can stay at their defaults. Here are a few settings to enter, and some best practices.</p>
 
-    <h3 class="font-semibold text-gray-900 dark:text-gray-100 pt-1">Settings › Saving › Cloud Sync</h3>
+    <h3 class="font-semibold text-gray-900 dark:text-gray-100">Settings › Saving</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="text-left text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+            <th class="pb-2 pr-6 font-medium">Setting</th>
+            <th class="pb-2 pr-4 font-medium">Value</th>
+            <th class="pb-2 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+          <tr>
+            <td class="py-2 pr-6 font-medium">Sort Saves into Folders by Core Name</td>
+            <td class="py-2 pr-4">On</td>
+            <td class="py-2 text-xs text-gray-400 dark:text-gray-500">Default</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-6 font-medium">Sort States into Folders by Core Name</td>
+            <td class="py-2 pr-4">On</td>
+            <td class="py-2 text-xs text-gray-400 dark:text-gray-500">Default</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-6 font-medium">Sort Saves by Content Directory</td>
+            <td class="py-2 pr-4">Off</td>
+            <td class="py-2 text-xs text-gray-400 dark:text-gray-500">Default</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-6 font-medium">Sort States by Content Directory</td>
+            <td class="py-2 pr-4">Off</td>
+            <td class="py-2 text-xs text-gray-400 dark:text-gray-500">Default</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-6 font-medium">Write Saves to Content Directory</td>
+            <td class="py-2 pr-4">Off</td>
+            <td class="py-2 text-xs text-gray-400 dark:text-gray-500">Default</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-6 font-medium">Don't Overwrite Save File on Loading State</td>
+            <td class="py-2 pr-4">On</td>
+            <td class="py-2 text-xs font-medium text-amber-600 dark:text-amber-400">Change</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-6 font-medium">Auto Save State</td>
+            <td class="py-2 pr-4">On</td>
+            <td class="py-2 text-xs text-gray-400 dark:text-gray-500">Recommended</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-6 font-medium">Auto Load State</td>
+            <td class="py-2 pr-4">On</td>
+            <td class="py-2 text-xs text-gray-400 dark:text-gray-500">Recommended</td>
+          </tr>
+          <tr>
+            <td class="py-2 pr-6 font-medium">Save State Thumbnails</td>
+            <td class="py-2 pr-4">On</td>
+            <td class="py-2 text-xs text-gray-400 dark:text-gray-500">Recommended</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-xs text-gray-400 dark:text-gray-500">All devices must use the same folder sorting settings. Mixing them causes the same game's files to appear under different names on different devices.</p>
+
+    <h3 class="font-semibold text-gray-900 dark:text-gray-100">Settings › Saving › Cloud Sync</h3>
     <div class="overflow-x-auto">
       <table class="w-full text-sm border-collapse">
         <thead>
