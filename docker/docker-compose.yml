@@ -13,4 +13,12 @@ services:
       # Set to your local timezone for dashboard timestamps.
       # See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
       - DISPLAY_TZ=UTC
+      # Optional: protect the web UI and API with HTTP Basic auth.
+      # Both vars must be set to enable. Remove the # to activate.
+      #- AUTH_UI_USERNAME=admin
+      #- AUTH_UI_PASSWORD=changeme
+      # Optional: protect the WebDAV sync endpoints with HTTP Basic auth.
+      # If set, all RetroArch devices must have matching credentials configured.
+      #- AUTH_WEBDAV_USERNAME=admin
+      #- AUTH_WEBDAV_PASSWORD=changeme
     restart: unless-stopped

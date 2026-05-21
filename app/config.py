@@ -36,6 +36,16 @@ if STATES_VERSION_LIMIT > 0:
 
 DISPLAY_TZ = ZoneInfo(os.environ.get("DISPLAY_TZ", "America/Chicago"))
 
+# Optional HTTP Basic auth. Each pair is independent — set both vars in a pair
+# to enable auth for that surface. If unset, the surface remains open.
+UI_USERNAME = os.environ.get("AUTH_UI_USERNAME")
+UI_PASSWORD = os.environ.get("AUTH_UI_PASSWORD")
+UI_AUTH_ENABLED = bool(UI_USERNAME and UI_PASSWORD)
+
+WEBDAV_USERNAME = os.environ.get("AUTH_WEBDAV_USERNAME")
+WEBDAV_PASSWORD = os.environ.get("AUTH_WEBDAV_PASSWORD")
+WEBDAV_AUTH_ENABLED = bool(WEBDAV_USERNAME and WEBDAV_PASSWORD)
+
 
 def ensure_dirs() -> None:
     for d in (STORE_DIR, SNAPSHOTS_DIR, DEVICES_DIR):
