@@ -31,24 +31,26 @@ async def init_db() -> None:
     db_path = Path(DATABASE_URL.replace("sqlite+aiosqlite:///", ""))
     log.info("DB init — url=%s path=%s exists=%s", DATABASE_URL, db_path, db_path.exists())
 
-    has_devices = False
-    has_alembic_version = False
+    needs_stamp = False
     if db_path.exists():
         try:
             with sqlite3.connect(str(db_path)) as conn:
                 tables = {r[0] for r in conn.execute(
                     "SELECT name FROM sqlite_master WHERE type='table'"
                 ).fetchall()}
-            log.info("DB tables found: %s", tables)
-            has_devices = "devices" in tables
-            has_alembic_version = "alembic_version" in tables
+                current_rev = None
+                if "alembic_version" in tables:
+                    row = conn.execute("SELECT version_num FROM alembic_version").fetchone()
+                    current_rev = row[0] if row else None
+            log.info("DB tables=%s current_revision=%s", tables, current_rev)
+            # Stamp needed when tables exist but Alembic has no recorded revision
+            needs_stamp = "devices" in tables and current_rev is None
         except Exception as e:
-            log.warning("DB table detection failed: %s", e)
+            log.warning("DB detection failed: %s", e)
 
-    log.info("has_devices=%s has_alembic_version=%s", has_devices, has_alembic_version)
-
-    if has_devices and not has_alembic_version:
-        log.info("Legacy install detected — stamping to head")
+    log.info("needs_stamp=%s", needs_stamp)
+    if needs_stamp:
+        log.info("Stamping existing database to head")
         await asyncio.to_thread(command.stamp, alembic_cfg, "head")
 
     await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
