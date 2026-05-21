@@ -104,7 +104,6 @@ async def get_timeline(
             "finished_at": _dt(event.finished_at),
             "files_uploaded": event.files_uploaded,
             "files_downloaded": event.files_downloaded,
-            "had_conflicts": event.had_conflicts,
             "files": [{"path": f.file_path, "action": f.action, "hash": f.hash} for f in files],
         })
     return out

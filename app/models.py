@@ -55,7 +55,6 @@ class SyncEvent(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     files_uploaded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     files_downloaded: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    had_conflicts: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     device: Mapped["Device"] = relationship(back_populates="sync_events")
     event_files: Mapped[list["SyncEventFile"]] = relationship(back_populates="sync_event")

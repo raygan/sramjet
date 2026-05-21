@@ -72,7 +72,6 @@ async def open_sync_event(db: AsyncSession, device: Device) -> SyncEvent:
         finished_at=None,
         files_uploaded=0,
         files_downloaded=0,
-        had_conflicts=False,
     )
     db.add(event)
     await db.flush()

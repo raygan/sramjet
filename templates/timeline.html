@@ -56,9 +56,7 @@
       {% if item.files_downloaded %}
       <span class="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 font-medium leading-none">↓ {{ item.files_downloaded }}</span>
       {% endif %}
-      {% if event.had_conflicts %}
-      <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 font-medium leading-none">⚠ conflicts</span>
-      {% endif %}
+
       {% if not item.finished_utc and (now_utc - item.event_utc).total_seconds() < 60 %}
       <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 font-medium leading-none">in progress</span>
       {% elif not item.finished_utc and not item.files_uploaded and not item.files_downloaded %}

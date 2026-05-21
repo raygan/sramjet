@@ -6,11 +6,6 @@ A self-hosted WebDAV server acting as a smart RetroArch cloud sync backend. Supp
 
 **Stack**: FastAPI + SQLite (SQLAlchemy async) + Jinja2 + Tailwind CSS (CDN) + Docker
 
-## Development Phases
-
-- **Phase 1**: Working sync backend + functional dashboard. ✅ Complete — validated with real devices.
-- **Phase 2**: UI polish and quality of life. ✅ Underway — dark mode, icons, timeline improvements, homepage redesign, streak tracker done.
-
 ---
 
 ## RetroArch WebDAV Behavior (researched from source)
