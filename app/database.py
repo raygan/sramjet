@@ -20,17 +20,17 @@ async def get_db() -> AsyncSession:
 
 async def init_db() -> None:
     import sqlite3
-    import logging
     from pathlib import Path
     from alembic import command
     from alembic.config import Config
 
-    log = logging.getLogger(__name__)
     alembic_cfg = Config("alembic.ini")
 
+    # Detect installs that predate Alembic (or had a failed first stamp):
+    # if the app tables exist but alembic_version has no recorded revision,
+    # stamp to head before upgrading so the migration doesn't try to recreate
+    # tables that already exist.
     db_path = Path(DATABASE_URL.replace("sqlite+aiosqlite:///", ""))
-    log.info("DB init — url=%s path=%s exists=%s", DATABASE_URL, db_path, db_path.exists())
-
     needs_stamp = False
     if db_path.exists():
         try:
@@ -42,15 +42,11 @@ async def init_db() -> None:
                 if "alembic_version" in tables:
                     row = conn.execute("SELECT version_num FROM alembic_version").fetchone()
                     current_rev = row[0] if row else None
-            log.info("DB tables=%s current_revision=%s", tables, current_rev)
-            # Stamp needed when tables exist but Alembic has no recorded revision
             needs_stamp = "devices" in tables and current_rev is None
-        except Exception as e:
-            log.warning("DB detection failed: %s", e)
+        except Exception:
+            pass
 
-    log.info("needs_stamp=%s", needs_stamp)
     if needs_stamp:
-        log.info("Stamping existing database to head")
         await asyncio.to_thread(command.stamp, alembic_cfg, "head")
 
     await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
