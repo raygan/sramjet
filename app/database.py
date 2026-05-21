@@ -21,6 +21,21 @@ async def get_db() -> AsyncSession:
 async def init_db() -> None:
     from alembic import command
     from alembic.config import Config
+    from sqlalchemy import inspect
 
     alembic_cfg = Config("alembic.ini")
-    await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+
+    # Detect existing databases that predate Alembic: if our tables are already
+    # there but the alembic_version table isn't, stamp to head rather than
+    # running migrations (which would fail on the already-existing tables).
+    async with engine.begin() as conn:
+        def _check(sync_conn):
+            tables = inspect(sync_conn).get_table_names()
+            return "devices" in tables and "alembic_version" not in tables
+
+        is_legacy = await conn.run_sync(_check)
+
+    if is_legacy:
+        await asyncio.to_thread(command.stamp, alembic_cfg, "head")
+    else:
+        await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
