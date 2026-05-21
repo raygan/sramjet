@@ -20,27 +20,35 @@ async def get_db() -> AsyncSession:
 
 async def init_db() -> None:
     import sqlite3
+    import logging
     from pathlib import Path
     from alembic import command
     from alembic.config import Config
 
+    log = logging.getLogger(__name__)
     alembic_cfg = Config("alembic.ini")
 
-    # Use plain sqlite3 to detect legacy installs — no asyncio complexity,
-    # no risk of event loop conflicts with Alembic's sync engine.
     db_path = Path(DATABASE_URL.replace("sqlite+aiosqlite:///", ""))
+    log.info("DB init — url=%s path=%s exists=%s", DATABASE_URL, db_path, db_path.exists())
+
     has_devices = False
     has_alembic_version = False
     if db_path.exists():
-        with sqlite3.connect(db_path) as conn:
-            tables = {r[0] for r in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()}
-        has_devices = "devices" in tables
-        has_alembic_version = "alembic_version" in tables
+        try:
+            with sqlite3.connect(str(db_path)) as conn:
+                tables = {r[0] for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()}
+            log.info("DB tables found: %s", tables)
+            has_devices = "devices" in tables
+            has_alembic_version = "alembic_version" in tables
+        except Exception as e:
+            log.warning("DB table detection failed: %s", e)
+
+    log.info("has_devices=%s has_alembic_version=%s", has_devices, has_alembic_version)
 
     if has_devices and not has_alembic_version:
-        # Legacy install — stamp without running migrations
+        log.info("Legacy install detected — stamping to head")
         await asyncio.to_thread(command.stamp, alembic_cfg, "head")
-    else:
-        await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+
+    await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
