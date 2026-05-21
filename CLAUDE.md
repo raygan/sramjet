@@ -184,6 +184,26 @@ pytest
 
 Run before committing. The test suite covers the sync backend; dashboard route bugs require code review.
 
+## Database Migrations (Alembic)
+
+Schema changes must be accompanied by an Alembic migration. The workflow:
+
+**1. Edit `app/models.py`** — add columns, tables, indexes, etc.
+
+**2. Generate a migration:**
+```bash
+DATA_DIR=./data alembic revision --autogenerate -m "describe the change"
+```
+This compares `models.py` against the live database and generates a migration script in `alembic/versions/`.
+
+**3. Review the generated file.** Autogenerate is good but not perfect — check that the upgrade/downgrade functions look correct before committing.
+
+**4. Commit the migration alongside the model change.** They should always be in the same commit so the codebase is never in an inconsistent state.
+
+Migrations run automatically on startup via `init_db()`. Fresh installs run all migrations; existing installs only run new ones.
+
+**Existing installs without a recorded revision** are detected automatically at startup: if the `devices` table exists but `alembic_version` has no rows, the database is stamped to head before upgrading (so no migrations run against already-existing tables).
+
 ## Docker
 
 ```bash
