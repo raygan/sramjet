@@ -21,21 +21,23 @@ async def get_db() -> AsyncSession:
 async def init_db() -> None:
     from alembic import command
     from alembic.config import Config
-    from sqlalchemy import inspect
+    from sqlalchemy import text
 
     alembic_cfg = Config("alembic.ini")
 
-    # Detect existing databases that predate Alembic: if our tables are already
-    # there but the alembic_version table isn't, stamp to head rather than
-    # running migrations (which would fail on the already-existing tables).
-    async with engine.begin() as conn:
-        def _check(sync_conn):
-            tables = inspect(sync_conn).get_table_names()
-            return "devices" in tables and "alembic_version" not in tables
+    # Detect existing databases that predate Alembic using sqlite_master —
+    # more reliable than the inspect API inside a transaction context.
+    async with engine.connect() as conn:
+        has_devices = (await conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='devices'")
+        )).fetchone() is not None
 
-        is_legacy = await conn.run_sync(_check)
+        has_alembic_version = (await conn.execute(
+            text("SELECT name FROM sqlite_master WHERE type='table' AND name='alembic_version'")
+        )).fetchone() is not None
 
-    if is_legacy:
+    if has_devices and not has_alembic_version:
+        # Legacy install — stamp without running migrations
         await asyncio.to_thread(command.stamp, alembic_cfg, "head")
     else:
         await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
