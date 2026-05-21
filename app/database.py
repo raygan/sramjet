@@ -19,22 +19,25 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db() -> None:
+    import sqlite3
+    from pathlib import Path
     from alembic import command
     from alembic.config import Config
-    from sqlalchemy import text
 
     alembic_cfg = Config("alembic.ini")
 
-    # Detect existing databases that predate Alembic using sqlite_master —
-    # more reliable than the inspect API inside a transaction context.
-    async with engine.connect() as conn:
-        has_devices = (await conn.execute(
-            text("SELECT name FROM sqlite_master WHERE type='table' AND name='devices'")
-        )).fetchone() is not None
-
-        has_alembic_version = (await conn.execute(
-            text("SELECT name FROM sqlite_master WHERE type='table' AND name='alembic_version'")
-        )).fetchone() is not None
+    # Use plain sqlite3 to detect legacy installs — no asyncio complexity,
+    # no risk of event loop conflicts with Alembic's sync engine.
+    db_path = Path(DATABASE_URL.replace("sqlite+aiosqlite:///", ""))
+    has_devices = False
+    has_alembic_version = False
+    if db_path.exists():
+        with sqlite3.connect(db_path) as conn:
+            tables = {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()}
+        has_devices = "devices" in tables
+        has_alembic_version = "alembic_version" in tables
 
     if has_devices and not has_alembic_version:
         # Legacy install — stamp without running migrations
