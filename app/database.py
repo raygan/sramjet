@@ -1,3 +1,5 @@
+import asyncio
+
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -17,7 +19,8 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db() -> None:
-    from app import models  # noqa: F401 — ensures models are registered
+    from alembic import command
+    from alembic.config import Config
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    alembic_cfg = Config("alembic.ini")
+    await asyncio.to_thread(command.upgrade, alembic_cfg, "head")

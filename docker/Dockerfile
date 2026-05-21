@@ -12,12 +12,15 @@ RUN pip install --no-cache-dir \
     "jinja2==3.1.6" \
     "python-multipart==0.0.28" \
     "lxml==6.1.0" \
-    "aiofiles==25.1.0"
+    "aiofiles==25.1.0" \
+    "alembic==1.16.1"
 
 # Copy source and install the package itself (no-deps since already installed above)
 COPY app/ app/
 COPY templates/ templates/
 COPY static/ static/
+COPY alembic/ alembic/
+COPY alembic.ini .
 RUN pip install --no-cache-dir --no-deps .
 
 ENV DATA_DIR=/data
