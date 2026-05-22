@@ -30,19 +30,9 @@
 <div class="px-4 py-3">
   <div class="flex items-start justify-between gap-4">
     <div class="flex gap-3 items-start min-w-0">
-      {# Pin button #}
+      {# Pin icon — only shown on pinned items #}
       {% if v.is_pinned %}
-      <form method="post" action="/files/{{ path }}/unpin/{{ v.id }}" class="shrink-0 mt-0.5">
-        <button type="submit" title="Unpin this version">
-          <img src="/static/icons/pin-filled.png" class="h-5 w-5 hover:opacity-75" alt="pinned">
-        </button>
-      </form>
-      {% else %}
-      <form method="post" action="/files/{{ path }}/pin/{{ v.id }}" class="shrink-0 mt-0.5">
-        <button type="submit" title="Pin this version">
-          <img src="/static/icons/pin.png" class="h-5 w-5 opacity-25 hover:opacity-60" alt="pin">
-        </button>
-      </form>
+      <img src="/static/icons/pin-filled.png" class="h-5 w-5 mt-0.5 shrink-0" alt="pinned">
       {% endif %}
 
       {% if png_hash %}
@@ -75,12 +65,25 @@
         {% endif %}
       </div>
     </div>
-    <div class="flex gap-2 shrink-0">
+    <div class="flex gap-2 shrink-0 items-start">
       {% if v.hash and v.hash != '' %}
       <a href="/api/files/{{ path }}/download/{{ v.hash }}"
          class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
         Download
       </a>
+      {% endif %}
+      {% if v.is_pinned %}
+      <form method="post" action="/files/{{ path }}/unpin/{{ v.id }}">
+        <button class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-1.5 rounded text-xs hover:bg-red-200 dark:hover:bg-red-900/50">
+          Unpin
+        </button>
+      </form>
+      {% else %}
+      <form method="post" action="/files/{{ path }}/pin/{{ v.id }}">
+        <button class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+          Pin
+        </button>
+      </form>
       {% endif %}
       {% if not v.is_canonical %}
       <form method="post" action="/files/{{ path }}/revert/{{ v.id }}">
@@ -106,7 +109,6 @@ function startNoteEdit(el) {
   if (placeholder) placeholder.classList.add('hidden');
   el.classList.add('ring-1', 'ring-blue-400', 'dark:ring-blue-500', 'rounded', 'px-1', '-mx-1');
   el.focus();
-  // Move cursor to end
   const range = document.createRange();
   range.selectNodeContents(el);
   range.collapse(false);
@@ -121,7 +123,6 @@ function saveNote(el) {
   const versionId = el.dataset.versionId;
   const placeholder = el.parentElement.querySelector('.note-placeholder');
   if (placeholder) placeholder.classList.toggle('hidden', note.length > 0);
-  // Save via fetch
   const filePath = window.location.pathname.replace(/^\/files\//, '');
   fetch(`/files/${filePath}/note/${versionId}`, {
     method: 'POST',
