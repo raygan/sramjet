@@ -108,8 +108,7 @@ Uses Tailwind `class` strategy. A `<script>` in `<head>` adds `dark` to `<html>`
 | `diskette.png` | Save files in lists |
 | `game-cartridge.png` | ROM files in lists |
 | `videogame.png` | State files without a screenshot |
-| `pin.png` | Pin button (unpinned state — outline) |
-| `pin-filled.png` | Pin button (pinned state — filled red) |
+| `pin.png` | Pin indicator (filled color) — shown on pinned versions |
 | `streak-0.png` | Broken / zero-day streak |
 | `streak-1.png` | 1-day streak |
 | `streak-2.png` | 2–4 day streak |

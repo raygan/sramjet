@@ -30,14 +30,17 @@
 <div class="px-4 py-3">
   <div class="flex items-start justify-between gap-4">
     <div class="flex gap-3 items-start min-w-0">
-      {# Pin icon — only shown on pinned items #}
-      {% if v.is_pinned %}
-      <img src="/static/icons/pin-filled.png" class="h-5 w-5 mt-0.5 shrink-0" alt="pinned">
-      {% endif %}
-
+      {# Screenshot with optional pin overlay #}
       {% if png_hash %}
-      <img src="/api/blobs/{{ png_hash }}" class="h-16 rounded shrink-0 cursor-pointer hover:opacity-80" alt="screenshot"
-           onclick="openLightbox(this.src)">
+      <div class="relative shrink-0">
+        <img src="/api/blobs/{{ png_hash }}" class="h-16 rounded cursor-pointer hover:opacity-80" alt="screenshot"
+             onclick="openLightbox(this.src)">
+        {% if v.is_pinned %}
+        <img src="/static/icons/pin.png" class="absolute top-0.5 right-0.5 h-5 w-5 drop-shadow-md pointer-events-none" alt="pinned">
+        {% endif %}
+      </div>
+      {% elif v.is_pinned %}
+      <img src="/static/icons/pin.png" class="h-5 w-5 mt-0.5 shrink-0" alt="pinned">
       {% endif %}
       <div class="min-w-0">
         <div class="flex items-center gap-2 mb-1 flex-wrap">
