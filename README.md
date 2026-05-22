@@ -33,18 +33,18 @@ A self-hosted sync server for RetroArch's Cloud Sync. Point RetroArch at SRAMjet
 
 ## Quick Start (Docker)
 
+Download the compose file and start the container:
+
 ```bash
-git clone https://github.com/raygan/sramjet.git
-cd sramjet/docker
+curl -O https://raw.githubusercontent.com/raygan/sramjet/main/docker/docker-compose.yml
 docker compose up -d
 ```
 
 The dashboard is available at `http://your-server:8080`.
 
-Data is persisted in `/data` inside the container. Mount a volume to keep it across restarts:
+Data is stored in a `./data` folder next to your compose file. To change the path, edit the volume in `docker-compose.yml`:
 
 ```yaml
-# docker/docker-compose.yml: edit the volume path to suit your setup
 volumes:
   - /path/to/your/data:/data
 ```

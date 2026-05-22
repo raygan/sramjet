@@ -1,8 +1,12 @@
 services:
   sramjet:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
+    image: ghcr.io/raygan/sramjet:latest
+    # To build locally instead: add a docker-compose.override.yml with:
+    #   services:
+    #     sramjet:
+    #       build:
+    #         context: ..
+    #         dockerfile: docker/Dockerfile
     ports:
       - "8080:8080"
     volumes:
