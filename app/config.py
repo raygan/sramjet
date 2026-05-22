@@ -36,6 +36,10 @@ if STATES_VERSION_LIMIT > 0:
 
 DISPLAY_TZ = ZoneInfo(os.environ.get("DISPLAY_TZ", "America/Chicago"))
 
+# Maximum upload size in bytes (0 = unlimited). Protects against OOM from
+# huge state files. Default: 256 MB, which covers even the largest emulator states.
+MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(256 * 1024 * 1024)))
+
 # Optional HTTP Basic auth. Each pair is independent — set both vars in a pair
 # to enable auth for that surface. If unset, the surface remains open.
 UI_USERNAME = os.environ.get("AUTH_UI_USERNAME")

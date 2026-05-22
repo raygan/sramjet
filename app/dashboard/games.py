@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import or_, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.config
@@ -143,18 +144,19 @@ async def dashboard_game_detail(name: str, request: Request, db: AsyncSession = 
 
     # ── Pinned versions for this game ─────────────────────────────────────────
     pinned_result = await db.execute(
-        select(Version).where(
+        select(Version)
+        .options(selectinload(Version.device))
+        .where(
             Version.is_pinned == True,  # noqa: E712
             Version.hash != "",
             or_(Version.file_path.like("saves/%"), Version.file_path.like("states/%")),
         ).order_by(Version.received_at.desc())
     )
-    pinned_items = []
-    for v in pinned_result.scalars().all():
-        gname = extract_game_name(v.file_path)
-        if gname and names_match(gname, name):
-            device = await db.get(Device, v.device_id)
-            pinned_items.append({"version": v, "device": device})
+    pinned_items = [
+        {"version": v, "device": v.device}
+        for v in pinned_result.scalars().all()
+        if (gname := extract_game_name(v.file_path)) and names_match(gname, name)
+    ]
 
     base, meta = format_game_name(name)
     return templates.TemplateResponse(

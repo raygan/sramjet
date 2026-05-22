@@ -6,6 +6,8 @@ RetroArch manifest format:
 """
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +19,8 @@ def parse(raw: bytes | str) -> Manifest:
     data = json.loads(raw)
     if not isinstance(data, list):
         raise ValueError("Manifest must be a JSON array")
+    if not all(isinstance(e, dict) and "path" in e and "hash" in e for e in data):
+        raise ValueError("Manifest entries must have 'path' and 'hash' keys")
     return sorted(data, key=lambda e: e["path"])
 
 
@@ -46,8 +50,23 @@ def load_canonical(canonical_path: Path) -> Manifest:
 
 
 def save_canonical(canonical_path: Path, manifest: Manifest) -> None:
+    """Write manifest atomically using a temp file + os.replace().
+
+    Prevents partial writes from corrupting the canonical manifest if the
+    process crashes mid-write, and eliminates the read-modify-write race
+    condition when two syncs run concurrently.
+    """
     canonical_path.parent.mkdir(parents=True, exist_ok=True)
-    canonical_path.write_bytes(serialize(manifest))
+    data = serialize(manifest)
+    fd, tmp = tempfile.mkstemp(dir=canonical_path.parent, prefix=".tmp-")
+    try:
+        os.write(fd, data)
+        os.close(fd)
+        os.replace(tmp, canonical_path)
+    except Exception:
+        os.close(fd)
+        os.unlink(tmp)
+        raise
 
 
 def diff(

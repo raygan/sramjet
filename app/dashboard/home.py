@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, or_, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.config
@@ -78,12 +79,14 @@ async def dashboard_home(request: Request, db: AsyncSession = Depends(get_db)):
 
     # ── Most recent sync ───────────────────────────────────────────────────────
     recent_event_result = await db.execute(
-        select(SyncEvent).order_by(SyncEvent.started_at.desc()).limit(1)
+        select(SyncEvent)
+        .options(selectinload(SyncEvent.device))
+        .order_by(SyncEvent.started_at.desc()).limit(1)
     )
     recent_event = recent_event_result.scalar_one_or_none()
     recent_sync = None
     if recent_event:
-        device = await db.get(Device, recent_event.device_id)
+        device = recent_event.device
         event_utc = recent_event.started_at.replace(tzinfo=timezone.utc)
         files_result = await db.execute(
             select(SyncEventFile)

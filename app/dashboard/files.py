@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.config
@@ -61,6 +62,7 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
 
     result = await db.execute(
         select(Version)
+        .options(selectinload(Version.device))
         .where(Version.file_path == path)
         .order_by(Version.received_at.desc())
     )
@@ -68,10 +70,7 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
     if not versions:
         raise HTTPException(status_code=404)
 
-    enriched = []
-    for v in versions:
-        device = await db.get(Device, v.device_id)
-        enriched.append({"version": v, "device": device})
+    enriched = [{"version": v, "device": v.device} for v in versions]
 
     # Find PNG thumbnails paired with each version of this state file
     version_pngs = {}
@@ -132,7 +131,7 @@ async def dashboard_revert_file(path: str, version_id: int, db: AsyncSession = D
 
     canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
     canonical_dict = mf.to_dict(canonical)
-    if version.hash == "":
+    if mf.is_deleted(version.hash):
         canonical_dict.pop(path, None)
     else:
         canonical_dict[path] = version.hash

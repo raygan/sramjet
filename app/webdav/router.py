@@ -150,7 +150,13 @@ async def webdav_put(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Response:
+    if app.config.MAX_UPLOAD_BYTES > 0:
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > app.config.MAX_UPLOAD_BYTES:
+            return Response(status_code=413)
     data = await request.body()
+    if app.config.MAX_UPLOAD_BYTES > 0 and len(data) > app.config.MAX_UPLOAD_BYTES:
+        return Response(status_code=413)
     device, _ = await get_or_create_device(db, device_name)
 
     if _is_manifest(path):

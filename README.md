@@ -70,6 +70,7 @@ volumes:
 | `SAVES_VERSION_LIMIT` | `0` | Versions to keep for `saves/` files — `0` means unlimited |
 | `STATES_VERSION_LIMIT` | `0` | Versions to keep for `states/` files — `0` means unlimited |
 | `SYNC_EVENT_WINDOW_SECONDS` | `30` | Events within this window from the same device are merged |
+| `MAX_UPLOAD_BYTES` | `268435456` | Maximum file upload size in bytes (256 MB); `0` disables the limit |
 | `AUTH_UI_USERNAME` | *(unset)* | Username for web UI and API — both vars must be set to enable |
 | `AUTH_UI_PASSWORD` | *(unset)* | Password for web UI and API |
 | `AUTH_WEBDAV_USERNAME` | *(unset)* | Username for WebDAV sync — both vars must be set to enable |

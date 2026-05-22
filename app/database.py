@@ -19,10 +19,13 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db() -> None:
+    import logging
     import sqlite3
     from pathlib import Path
     from alembic import command
     from alembic.config import Config
+
+    log = logging.getLogger(__name__)
 
     alembic_cfg = Config("alembic.ini")
 
@@ -43,8 +46,8 @@ async def init_db() -> None:
                     row = conn.execute("SELECT version_num FROM alembic_version").fetchone()
                     current_rev = row[0] if row else None
             needs_stamp = "devices" in tables and current_rev is None
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("init_db legacy detection failed: %s", e)
 
     if needs_stamp:
         await asyncio.to_thread(command.stamp, alembic_cfg, "head")

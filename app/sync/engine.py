@@ -110,7 +110,7 @@ async def handle_manifest_upload(
         for old in prev.scalars().all():
             old.is_canonical = False
         version.is_canonical = True
-        if version.hash == "":
+        if mf.is_deleted(version.hash):
             canonical_dict[version.file_path] = ""
         else:
             canonical_dict[version.file_path] = version.hash

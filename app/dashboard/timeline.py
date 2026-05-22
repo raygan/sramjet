@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.config
@@ -39,13 +40,15 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
     await db.commit()
 
     result = await db.execute(
-        select(SyncEvent).order_by(SyncEvent.started_at.desc()).limit(200)
+        select(SyncEvent)
+        .options(selectinload(SyncEvent.device))
+        .order_by(SyncEvent.started_at.desc()).limit(200)
     )
     events = result.scalars().all()
 
     items = []
     for event in events:
-        device = await db.get(Device, event.device_id)
+        device = event.device
         files_result = await db.execute(
             select(SyncEventFile)
             .where(SyncEventFile.sync_event_id == event.id)
