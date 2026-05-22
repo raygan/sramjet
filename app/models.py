@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -15,7 +15,40 @@ class Device(Base):
     first_seen: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     last_sync: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # Trust Next Sync — set to the activation timestamp; None = inactive.
+    force_accept_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    # Per-device quarantine settings.
+    quarantine_saves: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    quarantine_states: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Serialized manifest (same JSON format as canonical.json) for quarantined files.
+    # None when nothing has been quarantined yet.
+    quarantine_canonical_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     sync_events: Mapped[list["SyncEvent"]] = relationship(back_populates="device")
+    file_fetches: Mapped[list["DeviceFileFetch"]] = relationship(back_populates="device")
+
+
+class DeviceFileFetch(Base):
+    """Tracks the last hash each device fetched for each file path.
+
+    Used by the conflict detection logic to distinguish clean advances
+    (device fetched the current canonical and is uploading new progress)
+    from stale re-uploads or true conflicts.
+
+    Replaces the per-device last_fetched_manifest.json filesystem files.
+    """
+
+    __tablename__ = "device_file_fetches"
+    __table_args__ = (UniqueConstraint("device_id", "file_path"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"), nullable=False, index=True)
+    file_path: Mapped[str] = mapped_column(String, nullable=False)
+    hash: Mapped[str] = mapped_column(String, nullable=False)
+
+    device: Mapped["Device"] = relationship(back_populates="file_fetches")
 
 
 class StoredFile(Base):

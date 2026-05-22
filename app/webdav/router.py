@@ -8,7 +8,6 @@ tasks/task_cloudsync.c):
   - Manifest filename: manifest.server
   - 404 on GET = success (file not found)
   - 405 on MKCOL = success (directory exists)
-  - 409 on manifest PUT = conflicts exist (triggers RetroArch failure report)
   - OPTIONS on /sync/{device}/ = sync begin — opens a new SyncEvent
   - PUT manifest.server = sync end — closes the SyncEvent
   - GET manifest.server records what canonical the device has seen,
@@ -20,11 +19,10 @@ import logging
 import app.config
 from app import manifest as mf
 from app.database import get_db
-from app.models import Device
-
-log = logging.getLogger(__name__)
+from app.models import Device, DeviceFileFetch
 from app.store import read_blob
 from app.sync.engine import (
+    clear_force_accept,
     handle_file_delete,
     handle_file_upload,
     handle_manifest_upload,
@@ -41,7 +39,10 @@ from app.sync.quarantine import (
 )
 from app.sync.events import get_open_event, get_or_create_device, open_sync_event
 from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sync/{device_name}")
 
@@ -101,7 +102,7 @@ async def webdav_get(
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
     log.info("GET %s — device=%s open_event=%s", path, device_name, sync_event.id)
-    record_file_as_fetched(device_name, path, file_hash)
+    await record_file_as_fetched(db, device.id, path, file_hash)
     sync_event.files_downloaded += 1
     await db.commit()
 
@@ -113,25 +114,29 @@ async def _serve_manifest(device_name: str, db: AsyncSession) -> Response:
     await db.commit()
 
     # Trust next sync: serve empty manifest so RetroArch re-uploads everything.
-    if is_force_accept(device_name):
+    if is_force_accept(device):
         return Response(content=b"[]", media_type="application/json")
 
     # Quarantined device: serve hybrid manifest (main canonical minus quarantined
     # types, plus the device's own quarantine canonical for those types).
-    q = get_quarantine(device_name)
+    q = get_quarantine(device)
     if any(q.values()):
-        canonical = build_hybrid_manifest(device_name)
+        canonical = build_hybrid_manifest(device)
     else:
         canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
 
     if not canonical:
         return Response(status_code=404)
 
-    # Seed last_fetched_manifest on first contact so uploads made after the
-    # initial download are treated as clean advances, not conflicts.
-    manifest_path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
-    if not manifest_path.exists():
-        save_last_fetched_manifest(device_name, canonical)
+    # Seed fetch tracking on first contact so uploads made after the initial
+    # download are treated as clean advances, not conflicts.
+    count_result = await db.execute(
+        select(func.count()).where(DeviceFileFetch.device_id == device.id)
+    )
+    if count_result.scalar() == 0:
+        await save_last_fetched_manifest(db, device.id, canonical)
+        await db.commit()
+
     return Response(content=mf.serialize(canonical), media_type="application/json")
 
 
@@ -155,8 +160,8 @@ async def webdav_put(
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
 
-    if is_quarantined(device.name, path):
-        await handle_quarantined_upload(device.name, path, data, sync_event)
+    if is_quarantined(device, path):
+        await handle_quarantined_upload(device, path, data, sync_event)
     else:
         await handle_file_upload(db, device, path, data, sync_event)
     await db.commit()
@@ -190,8 +195,8 @@ async def webdav_delete(
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
 
-    if is_quarantined(device.name, path):
-        handle_quarantined_delete(device.name, path, sync_event)
+    if is_quarantined(device, path):
+        handle_quarantined_delete(device, path, sync_event)
     else:
         await handle_file_delete(db, device, path, sync_event)
     await db.commit()
@@ -220,8 +225,8 @@ async def webdav_move(
     if sync_event is None:
         sync_event = await open_sync_event(db, device)
 
-    if is_quarantined(device.name, path):
-        handle_quarantined_delete(device.name, path, sync_event)
+    if is_quarantined(device, path):
+        handle_quarantined_delete(device, path, sync_event)
     else:
         await handle_file_delete(db, device, path, sync_event)
     await db.commit()

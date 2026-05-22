@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 
 import app.config
 from app import manifest as mf
-from app.models import Device, ManifestSnapshot, StoredFile, SyncEvent, SyncEventFile, Version
+from app.models import Device, DeviceFileFetch, ManifestSnapshot, StoredFile, SyncEvent, SyncEventFile, Version
 from app.store import compute_md5, store_blob
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 log = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ async def handle_file_upload(
     # Force-accept: treat this sync like a fresh first sync, bypassing all
     # conflict detection. Flag is set by the user via the dashboard and cleared
     # automatically when the device's manifest PUT completes.
-    if is_force_accept(device.name):
+    if is_force_accept(device):
         if canonical_hash != incoming_hash:
             await _accept_as_canonical(db, device, file_path, incoming_hash, data, now, sync_event)
         return incoming_hash
@@ -46,7 +46,7 @@ async def handle_file_upload(
 
     # File differs from canonical. Check if this device knew about the current canonical
     # by looking at what they last fetched from us.
-    device_last_known_hash = _get_device_last_known_hash(device.name, file_path)
+    device_last_known_hash = await _get_device_last_known_hash(db, device.id, file_path)
 
     if device_last_known_hash == canonical_hash:
         # Device fetched the current canonical and is advancing it — clean update
@@ -111,8 +111,6 @@ async def handle_manifest_upload(
             old.is_canonical = False
         version.is_canonical = True
         if version.hash == "":
-            # Keep the entry with hash="" so other devices see the deletion
-            # signal in the manifest and delete locally, rather than re-uploading.
             canonical_dict[version.file_path] = ""
         else:
             canonical_dict[version.file_path] = version.hash
@@ -140,110 +138,94 @@ async def handle_manifest_upload(
     await _apply_retention(db, new_canonical)
     device.last_sync = now
     sync_event.finished_at = now
-    clear_force_accept(device.name)
+    clear_force_accept(device)
     # Record the canonical state this device successfully synced to.
-    # This is used for conflict detection on future uploads — only update
-    # on sync completion, not on manifest GET, so offline changes made
-    # before fetching the manifest are correctly detected as conflicts.
-    save_last_fetched_manifest(device.name, new_canonical)
+    # Used for conflict detection on future uploads — updated on sync completion,
+    # not on manifest GET, so offline changes made before fetching are detected.
+    await save_last_fetched_manifest(db, device.id, new_canonical)
 
 
+# ─── Trust Next Sync ──────────────────────────────────────────────────────────
 
-_FORCE_ACCEPT_TTL = 300  # seconds — auto-expires if no manifest PUT comes in
+_FORCE_ACCEPT_TTL = 300  # seconds — auto-expires if no manifest PUT arrives
 
 
-def is_force_accept(device_name: str) -> bool:
-    """Return True if Trust Next Sync is active for this device.
-
-    The flag stores the time it was set so it auto-expires after TTL seconds
-    even if no manifest PUT arrives (e.g. download-only syncs).
-    """
-    import time
-    flag = app.config.DEVICES_DIR / device_name / "force_accept"
-    if not flag.exists():
+def is_force_accept(device: Device) -> bool:
+    """Return True if Trust Next Sync is active for this device."""
+    if device.force_accept_at is None:
         return False
-    try:
-        age = time.time() - float(flag.read_text().strip())
-        if age > _FORCE_ACCEPT_TTL:
-            flag.unlink(missing_ok=True)
-            return False
-        return True
-    except (ValueError, OSError):
-        return False
+    age = (datetime.now(timezone.utc) - device.force_accept_at.replace(tzinfo=timezone.utc)).total_seconds()
+    return age <= _FORCE_ACCEPT_TTL
 
 
-def set_force_accept(device_name: str) -> None:
-    import time
-    device_dir = app.config.DEVICES_DIR / device_name
-    device_dir.mkdir(parents=True, exist_ok=True)
-    (device_dir / "force_accept").write_text(str(time.time()))
+def set_force_accept(device: Device) -> None:
+    """Activate Trust Next Sync. Caller must commit the session."""
+    device.force_accept_at = datetime.now(timezone.utc)
 
 
-def clear_force_accept(device_name: str) -> None:
-    flag = app.config.DEVICES_DIR / device_name / "force_accept"
-    flag.unlink(missing_ok=True)
+def clear_force_accept(device: Device) -> None:
+    """Deactivate Trust Next Sync. Caller must commit the session."""
+    device.force_accept_at = None
 
 
-def record_file_as_fetched(device_name: str, file_path: str, file_hash: str) -> None:
+# ─── Per-file fetch tracking ──────────────────────────────────────────────────
+
+
+async def record_file_as_fetched(
+    db: AsyncSession, device_id: int, file_path: str, file_hash: str
+) -> None:
     """Record that a device just downloaded file_path at file_hash.
 
     After a successful download the device "knows" the canonical hash for
     this file, so any new progress uploaded later is a clean advance, not
-    a conflict.  We only update the single entry rather than the whole
-    manifest to avoid clobbering other files' tracking state.
+    a conflict.
     """
-    path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
-    if path.exists():
-        manifest_dict = mf.to_dict(mf.load_canonical(path))
-    else:
-        manifest_dict = {}
-    if manifest_dict.get(file_path) == file_hash:
-        return
-    manifest_dict[file_path] = file_hash
-    mf.save_canonical(path, mf.from_dict(manifest_dict))
+    result = await db.execute(
+        select(DeviceFileFetch).where(
+            DeviceFileFetch.device_id == device_id,
+            DeviceFileFetch.file_path == file_path,
+        )
+    )
+    fetch = result.scalar_one_or_none()
+    if fetch is None:
+        db.add(DeviceFileFetch(device_id=device_id, file_path=file_path, hash=file_hash))
+    elif fetch.hash != file_hash:
+        fetch.hash = file_hash
 
 
-def _invalidate_last_fetched_entry(device_name: str, file_path: str) -> None:
-    """Remove one file from a device's last_fetched_manifest so the next upload
-    of that file is treated as unknown and triggers conflict detection."""
-    path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
-    if not path.exists():
-        return
-    manifest_dict = mf.to_dict(mf.load_canonical(path))
-    manifest_dict.pop(file_path, None)
-    mf.save_canonical(path, mf.from_dict(manifest_dict))
+async def save_last_fetched_manifest(
+    db: AsyncSession, device_id: int, manifest: mf.Manifest
+) -> None:
+    """Replace all fetch records for this device with the given manifest.
+
+    Called at sync completion so the device's known state is updated atomically.
+    """
+    await db.execute(delete(DeviceFileFetch).where(DeviceFileFetch.device_id == device_id))
+    for entry in manifest:
+        db.add(DeviceFileFetch(device_id=device_id, file_path=entry["path"], hash=entry["hash"]))
 
 
-def save_last_fetched_manifest(device_name: str, manifest: mf.Manifest) -> None:
-    """Record the canonical manifest a device fetched, so we can detect clean advances."""
-    device_dir = app.config.DEVICES_DIR / device_name
-    device_dir.mkdir(parents=True, exist_ok=True)
-    (device_dir / "last_fetched_manifest.json").write_bytes(mf.serialize(manifest))
-
-
-def _get_device_last_known_hash(device_name: str, file_path: str) -> str | None:
+async def _get_device_last_known_hash(
+    db: AsyncSession, device_id: int, file_path: str
+) -> str | None:
     """Return the hash the device last saw for file_path, or None if unknown."""
-    path = app.config.DEVICES_DIR / device_name / "last_fetched_manifest.json"
-    if not path.exists():
-        return None
-    fetched = mf.load_canonical(path)
-    return mf.to_dict(fetched).get(file_path)
+    result = await db.execute(
+        select(DeviceFileFetch).where(
+            DeviceFileFetch.device_id == device_id,
+            DeviceFileFetch.file_path == file_path,
+        )
+    )
+    fetch = result.scalar_one_or_none()
+    return fetch.hash if fetch else None
 
 
-# ─── Internal helpers ────────────────────────────────────────────────────────
-
+# ─── Internal helpers ─────────────────────────────────────────────────────────
 
 
 async def _get_pending_versions_for_device(
     db: AsyncSession, device_id: int, since: datetime
 ) -> list[Version]:
-    """Return versions created during the current sync session that still need promotion.
-
-    Filtering by `since` (the sync event start time) prevents the race condition where
-    _accept_as_canonical decanonizes an old version, making it look like a pending
-    version to the concurrent manifest PUT handler, which would then re-promote it and
-    overwrite the newly accepted canonical.
-    """
+    """Return versions created during the current sync session that still need promotion."""
     result = await db.execute(
         select(Version).where(
             Version.device_id == device_id,
@@ -286,7 +268,6 @@ async def _accept_as_canonical(
     db.add(StoredFile(path=file_path, hash=hash, size=len(data), stored_at=now))
     await _record_event_file(db, sync_event, file_path, "uploaded", hash)
     sync_event.files_uploaded += 1
-
 
 
 async def _record_event_file(
