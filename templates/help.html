@@ -99,7 +99,7 @@
     <p><strong>Use a unique device name for each device.</strong> SRAMjet registers new devices automatically on first sync. The name appears in the dashboard and is used to track which device last touched each file.</p>
 
     <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-4 py-3 text-amber-800 dark:text-amber-300">
-      <strong>Security:</strong> SRAMjet has no authentication. Do not expose it directly to the internet. Run it on a private network, or use a VPN like <a href="https://tailscale.com" class="underline" target="_blank" rel="noopener">Tailscale</a> or a zero-trust tunnel like <a href="https://www.cloudflare.com/zero-trust/" class="underline" target="_blank" rel="noopener">Cloudflare Access</a>.
+      <strong>Security:</strong> HTTP Basic auth is available for the dashboard and WebDAV endpoints — set <code class="font-mono text-xs">AUTH_UI_USERNAME</code> / <code class="font-mono text-xs">AUTH_UI_PASSWORD</code> and <code class="font-mono text-xs">AUTH_WEBDAV_USERNAME</code> / <code class="font-mono text-xs">AUTH_WEBDAV_PASSWORD</code> in your environment to enable them independently. Even with auth enabled, Basic auth over plain HTTP sends credentials in the clear — use HTTPS, a VPN like <a href="https://tailscale.com" class="underline" target="_blank" rel="noopener">Tailscale</a>, or a zero-trust tunnel like <a href="https://www.cloudflare.com/zero-trust/" class="underline" target="_blank" rel="noopener">Cloudflare Access</a> if exposing SRAMjet outside your local network.
     </div>
 
   </div>
