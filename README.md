@@ -2,42 +2,32 @@
 
 <img src="static/icons/jet.png" alt="SRAMjet" width="80">
 
-A self-hosted WebDAV server built specifically for RetroArch's Cloud Sync feature. Instead of pointing RetroArch at a generic WebDAV server, SRAMjet understands the RetroArch manifest format and acts as a smart sync backend — tracking what changed, detecting conflicts between devices, maintaining version history, and surfacing everything in a web dashboard.
+A self-hosted sync server for RetroArch's Cloud Sync. Point RetroArch at SRAMjet instead of a generic WebDAV server and get automatic conflict detection, full version history, and a dashboard to browse your saves. Never lose a save file again.
 
 ---
 
 ## Features
 
 **Sync backend**
-- Drop-in WebDAV target for RetroArch Cloud Sync — no client modification needed
+- Drop-in WebDAV target for RetroArch Cloud Sync, no client modification needed
 - Per-device routing (`/sync/{device-name}/`) with automatic device registration on first sync
-- Last-write-wins conflict resolution — uploads are always accepted, with full version history kept for revert
-- Content-addressable storage — identical files are stored exactly once regardless of how many devices upload them
+- Last-write-wins conflict resolution; uploads are always accepted with full version history kept for revert
+- Content-addressable storage; identical files are stored exactly once regardless of how many devices upload them
 - Full version history with configurable retention limits per file category (saves, states, system, thumbnails)
 - File-level revert to any previous version from the dashboard
-- Per-device quarantine — isolate saves or states to a single device (useful for incompatible emulator cores)
+- Per-device quarantine to isolate saves or states to a single device (useful for incompatible emulator cores)
 
 **Dashboard**
-- **Home**: overview stats (total uploads, games played, storage used), gaming streak tracker, most recent sync, recently played games
-- **Timeline**: chronological feed of every sync event with screenshot previews, slot badges, upload/download pills, and relative timestamps grouped by time period
-- **Games**: browse all games with boxart thumbnails; drill into each game to see saves, states (with slot badges and screenshot previews), pinned versions, and ROMs
-- **Devices**: manage registered devices; re-upload all files to bypass conflict detection once; per-directory quarantine
-- **Files**: browse the canonical file store; click any file for time-sectioned version history with one-click revert and download
-- **Help**: built-in setup guide and sync troubleshooting reference
+- A full visual interface to your saves: browse games with boxart, see version history over time, revert any file to a previous version, and monitor sync activity across devices
 
 **Pinned saves**
 - Pin any version of a save or state with an optional note (e.g. "Before final boss")
 - Pinned versions are kept indefinitely regardless of retention limits
-- Shown in a dedicated Pinned section on the game detail page with screenshots, download, and details links
+- Shown in a dedicated section on the game detail page with screenshots, download, and revert
 
 **Security**
 - Optional HTTP Basic auth for the web UI and WebDAV sync endpoints, configured independently via environment variables
-- Auth is disabled by default — safe for trusted private networks or VPN-only deployments
-
-**Visual design**
-- Dark mode by default (respects system light preference)
-- Responsive layout with hamburger nav — works well on phones
-- Kawaii icons: diskette for saves, game cartridge for ROMs, escalating flame icons for gaming streaks
+- Auth is disabled by default; run it on a local network or secure it with Tailscale, Cloudflare Access, or similar
 
 ---
 
@@ -54,7 +44,7 @@ The dashboard is available at `http://your-server:8080`.
 Data is persisted in `/data` inside the container. Mount a volume to keep it across restarts:
 
 ```yaml
-# docker/docker-compose.yml — edit the volume path to suit your setup
+# docker/docker-compose.yml: edit the volume path to suit your setup
 volumes:
   - /path/to/your/data:/data
 ```
@@ -67,13 +57,13 @@ volumes:
 | `DISPLAY_TZ` | `UTC` | Timezone for dashboard timestamps |
 | `SYSTEM_VERSION_LIMIT` | `5` | Versions to keep for `system/` files |
 | `THUMBNAIL_VERSION_LIMIT` | `3` | Versions to keep for `thumbnails/` files |
-| `SAVES_VERSION_LIMIT` | `0` | Versions to keep for `saves/` files — `0` means unlimited |
-| `STATES_VERSION_LIMIT` | `0` | Versions to keep for `states/` files — `0` means unlimited |
+| `SAVES_VERSION_LIMIT` | `0` | Versions to keep for `saves/` files (`0` means unlimited) |
+| `STATES_VERSION_LIMIT` | `0` | Versions to keep for `states/` files (`0` means unlimited) |
 | `SYNC_EVENT_WINDOW_SECONDS` | `30` | Events within this window from the same device are merged |
 | `MAX_UPLOAD_BYTES` | `268435456` | Maximum file upload size in bytes (256 MB); `0` disables the limit |
-| `AUTH_UI_USERNAME` | *(unset)* | Username for web UI and API — both vars must be set to enable |
+| `AUTH_UI_USERNAME` | *(unset)* | Username for web UI and API (both vars must be set to enable) |
 | `AUTH_UI_PASSWORD` | *(unset)* | Password for web UI and API |
-| `AUTH_WEBDAV_USERNAME` | *(unset)* | Username for WebDAV sync — both vars must be set to enable |
+| `AUTH_WEBDAV_USERNAME` | *(unset)* | Username for WebDAV sync (both vars must be set to enable) |
 | `AUTH_WEBDAV_PASSWORD` | *(unset)* | Password for WebDAV sync |
 
 ---
@@ -87,7 +77,7 @@ In RetroArch, go to **Settings → Saving → Cloud Sync** and set:
 | Cloud Sync Backend | WebDAV |
 | Cloud Sync URL | `http://your-server:8080/sync/my-device-name/` |
 
-Use a different device name for each device (e.g. `iphone`, `ipad`, `mac`). SRAMjet registers new devices automatically on first sync — no server-side setup needed.
+Use a different device name for each device (e.g. `iphone`, `ipad`, `mac`). SRAMjet registers new devices automatically on first sync, no server-side setup needed.
 
 For a full setup walkthrough and conflict resolution tips, see the **Help** page in the dashboard.
 
