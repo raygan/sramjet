@@ -63,17 +63,14 @@
         </div>
         <div class="font-mono text-xs text-gray-500 dark:text-gray-400 break-all">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
         {% if v.is_pinned %}
-        <div class="mt-1.5">
-          <span class="pin-note text-sm text-gray-600 dark:text-gray-300 cursor-text outline-none"
+        <div class="relative mt-1.5 cursor-text"
+             onclick="startNoteEdit(this.querySelector('.pin-note'))">
+          <span class="pin-note text-sm text-gray-600 dark:text-gray-300 outline-none block empty:min-h-[1.2em]"
                 data-version-id="{{ v.id }}"
-                onclick="startNoteEdit(this)"
                 onblur="saveNote(this)"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
-                >{{ v.pin_note if v.pin_note else '' }}</span>
-          {% if not v.pin_note %}
-          <span class="text-sm text-gray-400 dark:text-gray-600 italic cursor-text"
-                onclick="startNoteEdit(this.previousElementSibling)">Add a note…</span>
-          {% endif %}
+                >{{ v.pin_note or '' }}</span>
+          <span class="note-placeholder absolute top-0 left-0 text-sm text-gray-400 dark:text-gray-600 italic pointer-events-none{% if v.pin_note %} hidden{% endif %}">Add a note…</span>
         </div>
         {% endif %}
       </div>
@@ -105,11 +102,8 @@
 <script>
 function startNoteEdit(el) {
   el.contentEditable = 'true';
-  // Hide placeholder if present
-  const placeholder = el.nextElementSibling;
-  if (placeholder && placeholder.classList.contains('note-placeholder')) {
-    placeholder.style.display = 'none';
-  }
+  const placeholder = el.parentElement.querySelector('.note-placeholder');
+  if (placeholder) placeholder.classList.add('hidden');
   el.classList.add('ring-1', 'ring-blue-400', 'dark:ring-blue-500', 'rounded', 'px-1', '-mx-1');
   el.focus();
   // Move cursor to end
@@ -125,11 +119,8 @@ function saveNote(el) {
   el.classList.remove('ring-1', 'ring-blue-400', 'dark:ring-blue-500', 'rounded', 'px-1', '-mx-1');
   const note = el.textContent.trim();
   const versionId = el.dataset.versionId;
-  // Show/hide placeholder
-  const placeholder = el.nextElementSibling;
-  if (placeholder && placeholder.classList.contains('note-placeholder')) {
-    placeholder.style.display = note ? 'none' : '';
-  }
+  const placeholder = el.parentElement.querySelector('.note-placeholder');
+  if (placeholder) placeholder.classList.toggle('hidden', note.length > 0);
   // Save via fetch
   const filePath = window.location.pathname.replace(/^\/files\//, '');
   fetch(`/files/${filePath}/note/${versionId}`, {
