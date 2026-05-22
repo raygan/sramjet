@@ -93,7 +93,7 @@ RetroArch's Cloud Sync performs these HTTP requests in order on every sync:
 
 SRAMjet uses **last-write-wins**: whichever device uploads a file last becomes the canonical version, and the previous version is kept in history for revert. The server never gets into a stuck state.
 
-RetroArch also performs its own **client-side** conflict detection before uploading. If it detects that both local and server have changed since the last sync, it may refuse to upload and report "cloud sync completed with conflicts." The **Trust Next Sync** feature on the Devices page works around this by serving an empty manifest, causing RetroArch to treat the server as a clean slate and re-upload everything.
+RetroArch also performs its own **client-side** conflict detection before uploading. If it detects that both local and server have changed since the last sync, it may refuse to upload and report "cloud sync completed with conflicts." The **Re-upload All Files** feature on the Devices page works around this by serving an empty manifest, causing RetroArch to treat the server as a clean slate and re-upload everything.
 
 ---
 

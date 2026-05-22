@@ -113,7 +113,7 @@ async def _serve_manifest(device_name: str, db: AsyncSession) -> Response:
     device, _ = await get_or_create_device(db, device_name)
     await db.commit()
 
-    # Trust next sync: serve empty manifest so RetroArch re-uploads everything.
+    # Re-upload All Files: serve empty manifest so RetroArch re-uploads everything.
     if is_force_accept(device):
         return Response(content=b"[]", media_type="application/json")
 

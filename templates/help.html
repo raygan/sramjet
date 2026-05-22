@@ -115,19 +115,19 @@
 
     <h3 class="font-semibold text-gray-900 dark:text-gray-100">My device has an updated save but it isn't uploading</h3>
     <p>RetroArch performs its own conflict check before uploading. If it detects that both the local file and the server file have changed since the last sync, it will refuse to upload and report <em>"cloud sync completed with conflicts"</em> — even if the server would have accepted the file just fine.</p>
-    <p><strong>Fix:</strong> Go to the <a href="/devices" class="text-blue-600 dark:text-blue-400 hover:underline">Devices</a> page and click <strong>Trust Next Sync</strong> for that device. On the next sync, RetroArch will treat the server as a clean slate and re-upload all local files unconditionally. The flag clears automatically once the sync completes.</p>
+    <p><strong>Fix:</strong> Go to the <a href="/devices" class="text-blue-600 dark:text-blue-400 hover:underline">Devices</a> page and click <strong>Re-upload All Files</strong> for that device. On the next sync, RetroArch will treat the server as a clean slate and re-upload all local files unconditionally. The flag clears automatically once the sync completes.</p>
 
     <h3 class="font-semibold text-gray-900 dark:text-gray-100 pt-1">The server has a newer save but my device isn't downloading it</h3>
     <p>The same client-side conflict check can block downloads too. If RetroArch sees that both local and server have changed since it last synced, it may skip the download entirely.</p>
     <ul class="list-disc pl-5 space-y-1">
-      <li><strong>If you want the local version to win</strong> — use <strong>Trust Next Sync</strong>. The device will re-upload its local files and they'll become the new canonical versions on the server.</li>
-      <li><strong>If you want the server version to win</strong> — go to <a href="/files" class="text-blue-600 dark:text-blue-400 hover:underline">Files</a>, find the save, and click <strong>Revert</strong> on the version you want to restore. Then sync the device normally. If it's still stuck, use Trust Next Sync after the revert.</li>
+      <li><strong>If you want the local version to win</strong> — use <strong>Re-upload All Files</strong>. The device will re-upload its local files and they'll become the new canonical versions on the server.</li>
+      <li><strong>If you want the server version to win</strong> — go to <a href="/files" class="text-blue-600 dark:text-blue-400 hover:underline">Files</a>, find the save, and click <strong>Revert</strong> on the version you want to restore. Then sync the device normally. If it's still stuck, use Re-upload All Files after the revert.</li>
     </ul>
 
     <h3 class="font-semibold text-gray-900 dark:text-gray-100 pt-1">How SRAMjet handles conflicts</h3>
     <p class="text-gray-500 dark:text-gray-400">Standard WebDAV servers have no awareness of sync conflicts — they just store whatever is uploaded. RetroArch's conflict detection is entirely client-side, with no way for the server to communicate resolution hints back.</p>
     <p class="text-gray-500 dark:text-gray-400">SRAMjet resolves this by tracking full version history and using <strong>last-write-wins</strong>: whichever device uploads a file last becomes the canonical version, and the displaced version is kept in history so you can revert if needed. The server never gets into a stuck state.</p>
-    <p class="text-gray-500 dark:text-gray-400">The <strong>Trust Next Sync</strong> feature works by serving an empty manifest to the affected device. RetroArch interprets an empty manifest as a server that has been reset and unconditionally re-uploads all local files, bypassing its client-side conflict logic. Under the hood, this is the same path RetroArch uses on a brand-new device's first sync.</p>
+    <p class="text-gray-500 dark:text-gray-400">The <strong>Re-upload All Files</strong> feature works by serving an empty manifest to the affected device. RetroArch interprets an empty manifest as a server that has been reset and unconditionally re-uploads all local files, bypassing its client-side conflict logic. Under the hood, this is the same path RetroArch uses on a brand-new device's first sync.</p>
 
   </div>
 </details>

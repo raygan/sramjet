@@ -17,7 +17,7 @@
       <span class="font-medium">{{ device.display_name }}</span>
       <span class="font-mono text-xs text-gray-400 dark:text-gray-500">/sync/{{ device.name }}/</span>
       {% if trusted %}
-      <span class="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded font-medium">trust next sync — sync now</span>
+      <span class="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded font-medium">re-upload all files — sync now</span>
       {% endif %}
       {% if q.saves %}<span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded">saves quarantined</span>{% endif %}
       {% if q.states %}<span class="text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded">states quarantined</span>{% endif %}
@@ -30,11 +30,11 @@
   <div class="flex gap-2 flex-wrap items-center">
     {% if trusted %}
     <form method="post" action="/devices/{{ device.name }}/cancel-force-accept">
-      <button class="text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-3 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-500">Cancel trust</button>
+      <button class="text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-3 py-1 rounded hover:bg-gray-300 dark:hover:bg-gray-500">Cancel</button>
     </form>
     {% else %}
     <form method="post" action="/devices/{{ device.name }}/force-accept">
-      <button class="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700">Trust next sync</button>
+      <button class="text-xs bg-amber-600 text-white px-3 py-1 rounded hover:bg-amber-700">Re-upload All Files</button>
     </form>
     {% endif %}
 
@@ -53,7 +53,8 @@
 </div>
 
 <p class="text-xs text-gray-400 dark:text-gray-500 mt-4">
-  "Trust next sync" bypasses conflict detection for one sync from that device —
-  all uploads are accepted as canonical. The flag clears automatically when the sync completes.
+  "Re-upload All Files" causes the device to re-upload everything on its next sync,
+  bypassing its own conflict check. Use this when a device is stuck reporting conflicts
+  and won't upload. The flag clears automatically when the sync completes.
 </p>
 {% endblock %}

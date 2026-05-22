@@ -27,9 +27,9 @@ async def handle_file_upload(
     canonical_dict = mf.to_dict(canonical)
     canonical_hash = canonical_dict.get(file_path)
 
-    # Force-accept: treat this sync like a fresh first sync, bypassing all
-    # conflict detection. Flag is set by the user via the dashboard and cleared
-    # automatically when the device's manifest PUT completes.
+    # Re-upload All Files: treat this sync like a fresh first sync, bypassing
+    # all conflict detection. Flag is set by the user via the dashboard and
+    # cleared automatically when the device's manifest PUT completes.
     if is_force_accept(device):
         if canonical_hash != incoming_hash:
             await _accept_as_canonical(db, device, file_path, incoming_hash, data, now, sync_event)
@@ -145,13 +145,13 @@ async def handle_manifest_upload(
     await save_last_fetched_manifest(db, device.id, new_canonical)
 
 
-# ─── Trust Next Sync ──────────────────────────────────────────────────────────
+# ─── Re-upload All Files ──────────────────────────────────────────────────────
 
 _FORCE_ACCEPT_TTL = 300  # seconds — auto-expires if no manifest PUT arrives
 
 
 def is_force_accept(device: Device) -> bool:
-    """Return True if Trust Next Sync is active for this device."""
+    """Return True if Re-upload All Files is active for this device."""
     if device.force_accept_at is None:
         return False
     age = (datetime.now(timezone.utc) - device.force_accept_at.replace(tzinfo=timezone.utc)).total_seconds()
@@ -159,12 +159,12 @@ def is_force_accept(device: Device) -> bool:
 
 
 def set_force_accept(device: Device) -> None:
-    """Activate Trust Next Sync. Caller must commit the session."""
+    """Activate Re-upload All Files. Caller must commit the session."""
     device.force_accept_at = datetime.now(timezone.utc)
 
 
 def clear_force_accept(device: Device) -> None:
-    """Deactivate Trust Next Sync. Caller must commit the session."""
+    """Deactivate Re-upload All Files. Caller must commit the session."""
     device.force_accept_at = None
 
 

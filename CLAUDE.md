@@ -61,7 +61,7 @@ RetroArch never uploads: `config/retroarch.cfg`, `config/content_*.lpl`, `.DS_St
 
 SRAMjet uses **last-write-wins**: whichever device uploads a file last becomes canonical, and the previous version is kept in history. Conflicts are auto-resolved with a `log.warning()` rather than blocking the upload.
 
-RetroArch performs its own client-side conflict detection before uploading. If it sees that both local and server have changed since last sync, it refuses to upload. The **Trust Next Sync** feature serves an empty manifest to the affected device — RetroArch interprets this as a clean-slate server (the same as a brand-new device's first sync) and re-uploads everything unconditionally.
+RetroArch performs its own client-side conflict detection before uploading. If it sees that both local and server have changed since last sync, it refuses to upload. The **Re-upload All Files** feature serves an empty manifest to the affected device — RetroArch interprets this as a clean-slate server (the same as a brand-new device's first sync) and re-uploads everything unconditionally.
 
 ### Sync event boundaries
 

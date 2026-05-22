@@ -20,7 +20,7 @@ A self-hosted WebDAV server built specifically for RetroArch's Cloud Sync featur
 - **Home**: overview stats (total uploads, games played, storage used), gaming streak tracker, most recent sync, recently played games
 - **Timeline**: chronological feed of every sync event with screenshot previews, slot badges, upload/download pills, and relative timestamps grouped by time period
 - **Games**: browse all games with boxart thumbnails; drill into each game to see saves, states (with slot badges and screenshot previews), and ROMs
-- **Devices**: manage registered devices; trust-next-sync to bypass conflict detection once; per-directory quarantine
+- **Devices**: manage registered devices; re-upload all files to bypass conflict detection once; per-directory quarantine
 - **Files**: browse the canonical file store; click any file for time-sectioned version history with one-click revert
 
 **Visual design**

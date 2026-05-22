@@ -15,7 +15,7 @@ class Device(Base):
     first_seen: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     last_sync: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    # Trust Next Sync — set to the activation timestamp; None = inactive.
+    # Re-upload All Files — set to the activation timestamp; None = inactive.
     force_accept_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Per-device quarantine settings.
