@@ -34,9 +34,19 @@
 <div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
   {% for item in pinned_items %}
   {% set v = item.version %}
+  {% set png_hash = state_png_map.get(v.file_path) %}
   <div class="px-4 py-3 flex items-start justify-between gap-4">
     <div class="flex gap-3 items-start min-w-0">
+      {# Screenshot with pin overlay, or standalone pin icon #}
+      {% if png_hash %}
+      <div class="relative shrink-0">
+        <img src="/api/blobs/{{ png_hash }}" class="h-16 rounded cursor-pointer hover:opacity-80"
+             onclick="openLightbox(this.src)" alt="screenshot">
+        <img src="/static/icons/pin.png" class="absolute top-0.5 right-0.5 h-5 w-5 drop-shadow-md pointer-events-none" alt="pinned">
+      </div>
+      {% else %}
       <img src="/static/icons/pin.png" class="h-5 w-5 mt-0.5 shrink-0" alt="pinned">
+      {% endif %}
       <div class="min-w-0">
         {% if v.pin_note %}
         <p class="font-medium text-sm mb-1">{{ v.pin_note }}</p>
@@ -46,7 +56,8 @@
           {% if v.file_path | is_save_file %}
           <span class="text-xs text-gray-500 dark:text-gray-400">Save</span>
           {% endif %}
-          <span class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ v.file_path | basename }}</span>
+          <a href="/files/{{ v.file_path }}"
+             class="font-mono text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline">{{ v.file_path | basename }}</a>
           <span class="text-xs text-gray-400 dark:text-gray-500"
                 data-ts="{{ v.received_at.isoformat() }}Z">{{ v.received_at.strftime('%-m/%-d/%y') }}</span>
           {% if not v.is_canonical %}
