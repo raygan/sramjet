@@ -127,4 +127,16 @@
 </div>
 {% endfor %}
 {% endfor %}
+
+{% if total_pages > 1 %}
+<div class="flex justify-between items-center mt-6 text-sm">
+  {% if page > 1 %}
+  <a href="?page={{ page - 1 }}" class="px-3 py-1.5 rounded bg-white dark:bg-gray-800 shadow text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">← Previous</a>
+  {% else %}<span></span>{% endif %}
+  <span class="text-gray-400 dark:text-gray-500 text-xs">Page {{ page }} of {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="?page={{ page + 1 }}" class="px-3 py-1.5 rounded bg-white dark:bg-gray-800 shadow text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Next →</a>
+  {% else %}<span></span>{% endif %}
+</div>
+{% endif %}
 {% endblock %}

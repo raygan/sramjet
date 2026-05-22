@@ -2,23 +2,29 @@
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.config
 from app.database import get_db
-from app.models import Device, SyncEvent, SyncEventFile
+from app.models import SyncEvent, SyncEventFile
 from app.dashboard.templates import templates
 from app.dashboard.utils import device_color
 
 router = APIRouter()
 
+PAGE_SIZE = 50
+
 
 @router.get("/timeline", response_class=HTMLResponse)
-async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db)):
+async def dashboard_timeline(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+):
     tz = app.config.DISPLAY_TZ
     now_utc = datetime.now(timezone.utc)
     now_local = now_utc.astimezone(tz)
@@ -39,31 +45,33 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
         stale.finished_at = stale.started_at
     await db.commit()
 
+    total = (await db.execute(select(func.count(SyncEvent.id)))).scalar_one()
+    total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(page, total_pages)
+
     result = await db.execute(
         select(SyncEvent)
-        .options(selectinload(SyncEvent.device))
-        .order_by(SyncEvent.started_at.desc()).limit(200)
+        .options(
+            selectinload(SyncEvent.device),
+            selectinload(SyncEvent.event_files),
+        )
+        .order_by(SyncEvent.started_at.desc())
+        .offset((page - 1) * PAGE_SIZE)
+        .limit(PAGE_SIZE)
     )
     events = result.scalars().all()
 
     items = []
     for event in events:
         device = event.device
-        files_result = await db.execute(
-            select(SyncEventFile)
-            .where(SyncEventFile.sync_event_id == event.id)
-            .order_by(SyncEventFile.file_path)
-        )
-        files = files_result.scalars().all()
+        files = sorted(event.event_files, key=lambda f: f.file_path)
 
         png_map = {}
-        paired_png_paths = set()
         for f in files:
             if f.file_path.endswith(".png") and f.action == "uploaded":
                 state_path = f.file_path[:-4]
                 if state_path.startswith("states/"):
                     png_map[state_path] = f.hash
-                    paired_png_paths.add(f.file_path)
 
         event_utc = event.started_at.replace(tzinfo=timezone.utc)
         event_local = event_utc.astimezone(tz)
@@ -96,13 +104,11 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
             prev = merged[-1]
             combined_files = list(prev["files"]) + list(item["files"])
             combined_png_map = {}
-            combined_paired = set()
             for f in combined_files:
                 if f.file_path.endswith(".png") and f.action == "uploaded":
                     state_path = f.file_path[:-4]
                     if state_path.startswith("states/"):
                         combined_png_map[state_path] = f.hash
-                        combined_paired.add(f.file_path)
             combined_display = [f for f in combined_files if not f.file_path.endswith(".png")]
             prev["files"] = combined_files
             prev["display_files"] = combined_display
@@ -136,5 +142,10 @@ async def dashboard_timeline(request: Request, db: AsyncSession = Depends(get_db
 
     return templates.TemplateResponse(
         request, "timeline.html",
-        context={"sections": sections, "now_utc": now_utc},
+        context={
+            "sections": sections,
+            "now_utc": now_utc,
+            "page": page,
+            "total_pages": total_pages,
+        },
     )

@@ -2,9 +2,9 @@
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,8 +50,16 @@ async def dashboard_remove_file(path: str = Form(...)):
     return RedirectResponse(url="/files", status_code=303)
 
 
+PAGE_SIZE = 25
+
+
 @router.get("/files/{path:path}", response_class=HTMLResponse)
-async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def dashboard_file_detail(
+    path: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+):
     tz = app.config.DISPLAY_TZ
     now_utc = datetime.now(timezone.utc)
     now_local = now_utc.astimezone(tz)
@@ -60,15 +68,39 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
     today_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
     week_start = (now_local - timedelta(days=now_local.weekday())).replace(hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc)
 
+    # Check the file exists at all
+    exists = (await db.execute(
+        select(func.count(Version.id)).where(Version.file_path == path)
+    )).scalar_one()
+    if not exists:
+        raise HTTPException(status_code=404)
+
+    # Pinned versions — always shown above the fold, unpaginated
+    pinned_result = await db.execute(
+        select(Version)
+        .options(selectinload(Version.device))
+        .where(Version.file_path == path, Version.is_pinned == True)  # noqa: E712
+        .order_by(Version.received_at.desc())
+    )
+    pinned_versions = [{"version": v, "device": v.device} for v in pinned_result.scalars().all()]
+
+    # Non-pinned versions — paginated
+    total = (await db.execute(
+        select(func.count(Version.id))
+        .where(Version.file_path == path, Version.is_pinned == False)  # noqa: E712
+    )).scalar_one()
+    total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = min(page, total_pages)
+
     result = await db.execute(
         select(Version)
         .options(selectinload(Version.device))
-        .where(Version.file_path == path)
+        .where(Version.file_path == path, Version.is_pinned == False)  # noqa: E712
         .order_by(Version.received_at.desc())
+        .offset((page - 1) * PAGE_SIZE)
+        .limit(PAGE_SIZE)
     )
     versions = result.scalars().all()
-    if not versions:
-        raise HTTPException(status_code=404)
 
     enriched = [{"version": v, "device": v.device} for v in versions]
 
@@ -116,7 +148,14 @@ async def dashboard_file_detail(path: str, request: Request, db: AsyncSession = 
 
     return templates.TemplateResponse(
         request, "file_detail.html",
-        context={"path": path, "sections": sections, "version_pngs": version_pngs},
+        context={
+            "path": path,
+            "pinned_versions": pinned_versions,
+            "sections": sections,
+            "version_pngs": version_pngs,
+            "page": page,
+            "total_pages": total_pages,
+        },
     )
 
 

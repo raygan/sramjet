@@ -1,36 +1,11 @@
 {% extends "base.html" %}
 {% block title %} — {{ path }}{% endblock %}
-{% block content %}
-<div class="mb-4">
-  <a href="/files" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">← Files</a>
-</div>
-<div class="flex items-center gap-2 mb-6 flex-wrap">
-  <h1 class="text-xl font-bold font-mono break-all">{{ path }}</h1>
-  {% set slot = path | state_slot %}
-  {% if slot %}
-  <span class="text-sm px-2 py-0.5 rounded-full leading-none font-medium shrink-0
-    {% if slot == 'Auto' %}bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400
-    {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %}">{{ slot }}</span>
-  {% endif %}
-</div>
 
-{% if not sections %}
-<p class="text-gray-500 dark:text-gray-400">No version history found.</p>
-{% else %}
-{% for section in sections %}
-<div class="flex items-center gap-3 mt-6 mb-2 first:mt-0">
-  <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{{ section.title }}</span>
-  <div class="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
-</div>
-<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
-{% for item in section.versions %}
-{% set v = item.version %}
-{% set device = item.device %}
-{% set png_hash = version_pngs.get(v.hash) %}
+{# ── Version row macro — used for both pinned section and history sections ── #}
+{% macro version_row(v, device, png_hash) %}
 <div class="px-4 py-3">
   <div class="flex items-start justify-between gap-4">
     <div class="flex gap-3 items-start min-w-0">
-      {# Screenshot with optional pin overlay #}
       {% if png_hash %}
       <div class="relative shrink-0">
         <img src="/api/blobs/{{ png_hash }}" class="h-16 rounded cursor-pointer hover:opacity-80" alt="screenshot"
@@ -77,15 +52,11 @@
       {% endif %}
       {% if v.is_pinned %}
       <form method="post" action="/files/{{ path }}/unpin/{{ v.id }}">
-        <button class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-1.5 rounded text-xs hover:bg-red-200 dark:hover:bg-red-900/50">
-          Unpin
-        </button>
+        <button class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-1.5 rounded text-xs hover:bg-red-200 dark:hover:bg-red-900/50">Unpin</button>
       </form>
       {% else %}
       <form method="post" action="/files/{{ path }}/pin/{{ v.id }}">
-        <button class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-          Pin
-        </button>
+        <button class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">Pin</button>
       </form>
       {% endif %}
       {% if not v.is_canonical %}
@@ -100,9 +71,62 @@
     </div>
   </div>
 </div>
-{% endfor %}
+{% endmacro %}
+
+{% block content %}
+<div class="mb-4">
+  <a href="/files" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">← Files</a>
+</div>
+<div class="flex items-center gap-2 mb-6 flex-wrap">
+  <h1 class="text-xl font-bold font-mono break-all">{{ path }}</h1>
+  {% set slot = path | state_slot %}
+  {% if slot %}
+  <span class="text-sm px-2 py-0.5 rounded-full leading-none font-medium shrink-0
+    {% if slot == 'Auto' %}bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400
+    {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %}">{{ slot }}</span>
+  {% endif %}
+</div>
+
+{# ── Pinned — always visible above the fold ──────────────────────────────── #}
+{% if pinned_versions %}
+<div class="flex items-center gap-3 mb-2">
+  <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Pinned</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
+</div>
+<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700 mb-2">
+  {% for item in pinned_versions %}
+  {{ version_row(item.version, item.device, version_pngs.get(item.version.hash)) }}
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Version history (paginated) ──────────────────────────────────────────── #}
+{% if not sections and not pinned_versions %}
+<p class="text-gray-500 dark:text-gray-400">No version history found.</p>
+{% endif %}
+
+{% for section in sections %}
+<div class="flex items-center gap-3 mt-6 mb-2 first:mt-0">
+  <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{{ section.title }}</span>
+  <div class="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
+</div>
+<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
+  {% for item in section.versions %}
+  {{ version_row(item.version, item.device, version_pngs.get(item.version.hash)) }}
+  {% endfor %}
 </div>
 {% endfor %}
+
+{% if total_pages > 1 %}
+<div class="flex justify-between items-center mt-6 text-sm">
+  {% if page > 1 %}
+  <a href="?page={{ page - 1 }}" class="px-3 py-1.5 rounded bg-white dark:bg-gray-800 shadow text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">← Previous</a>
+  {% else %}<span></span>{% endif %}
+  <span class="text-gray-400 dark:text-gray-500 text-xs">Page {{ page }} of {{ total_pages }}</span>
+  {% if page < total_pages %}
+  <a href="?page={{ page + 1 }}" class="px-3 py-1.5 rounded bg-white dark:bg-gray-800 shadow text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Next →</a>
+  {% else %}<span></span>{% endif %}
+</div>
 {% endif %}
 
 <script>
@@ -126,7 +150,7 @@ function saveNote(el) {
   const versionId = el.dataset.versionId;
   const placeholder = el.parentElement.querySelector('.note-placeholder');
   if (placeholder) placeholder.classList.toggle('hidden', note.length > 0);
-  const filePath = window.location.pathname.replace(/^\/files\//, '');
+  const filePath = window.location.pathname.replace(/^\/files\//, '').split('?')[0];
   fetch(`/files/${filePath}/note/${versionId}`, {
     method: 'POST',
     body: new URLSearchParams({note}),
