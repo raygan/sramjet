@@ -71,7 +71,8 @@
                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
                 >{{ v.pin_note if v.pin_note else '' }}</span>
           {% if not v.pin_note %}
-          <span class="note-placeholder text-sm text-gray-400 dark:text-gray-600 italic cursor-text select-none pointer-events-none">Add a note…</span>
+          <span class="text-sm text-gray-400 dark:text-gray-600 italic cursor-text"
+                onclick="startNoteEdit(this.previousElementSibling)">Add a note…</span>
           {% endif %}
         </div>
         {% endif %}
