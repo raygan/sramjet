@@ -74,6 +74,8 @@ class Version(Base):
     device_id: Mapped[int] = mapped_column(ForeignKey("devices.id"), nullable=False)
     received_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     is_canonical: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     device: Mapped["Device"] = relationship()
 

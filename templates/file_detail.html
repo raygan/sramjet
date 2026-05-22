@@ -27,44 +27,115 @@
 {% set v = item.version %}
 {% set device = item.device %}
 {% set png_hash = version_pngs.get(v.hash) %}
-<div class="px-4 py-3 flex items-start justify-between gap-4">
-  <div class="flex gap-3 items-start min-w-0">
-    {% if png_hash %}
-    <img src="/api/blobs/{{ png_hash }}" class="h-16 rounded shrink-0 cursor-pointer hover:opacity-80" alt="screenshot"
-         onclick="openLightbox(this.src)">
-    {% endif %}
-    <div class="min-w-0">
-      <div class="flex items-center gap-2 mb-1 flex-wrap">
-        {% if v.is_canonical %}
-        <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-2 py-0.5 rounded font-medium">current</span>
+<div class="px-4 py-3">
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex gap-3 items-start min-w-0">
+      {# Pin button #}
+      {% if v.is_pinned %}
+      <form method="post" action="/files/{{ path }}/unpin/{{ v.id }}" class="shrink-0 mt-0.5">
+        <button type="submit" title="Unpin this version">
+          <img src="/static/icons/pin-filled.png" class="h-5 w-5 hover:opacity-75" alt="pinned">
+        </button>
+      </form>
+      {% else %}
+      <form method="post" action="/files/{{ path }}/pin/{{ v.id }}" class="shrink-0 mt-0.5">
+        <button type="submit" title="Pin this version">
+          <img src="/static/icons/pin.png" class="h-5 w-5 opacity-30 hover:opacity-70 dark:invert" alt="pin">
+        </button>
+      </form>
+      {% endif %}
+
+      {% if png_hash %}
+      <img src="/api/blobs/{{ png_hash }}" class="h-16 rounded shrink-0 cursor-pointer hover:opacity-80" alt="screenshot"
+           onclick="openLightbox(this.src)">
+      {% endif %}
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 mb-1 flex-wrap">
+          {% if v.is_canonical %}
+          <span class="text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-2 py-0.5 rounded font-medium">current</span>
+          {% endif %}
+          {% if v.is_pinned %}
+          <span class="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded font-medium">pinned</span>
+          {% endif %}
+          <span class="text-xs text-gray-400 dark:text-gray-500"
+                data-ts="{{ v.received_at.isoformat() }}Z">{{ v.received_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+          <span class="text-xs text-gray-500 dark:text-gray-400">{{ device.display_name if device else 'unknown' }}</span>
+        </div>
+        <div class="font-mono text-xs text-gray-500 dark:text-gray-400 break-all">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
+        {% if v.is_pinned %}
+        <div class="mt-1.5">
+          <span class="pin-note text-sm text-gray-600 dark:text-gray-300 cursor-text outline-none"
+                data-version-id="{{ v.id }}"
+                onclick="startNoteEdit(this)"
+                onblur="saveNote(this)"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+                >{{ v.pin_note if v.pin_note else '' }}</span>
+          {% if not v.pin_note %}
+          <span class="note-placeholder text-sm text-gray-400 dark:text-gray-600 italic cursor-text select-none pointer-events-none">Add a note…</span>
+          {% endif %}
+        </div>
         {% endif %}
-        <span class="text-xs text-gray-400 dark:text-gray-500"
-              data-ts="{{ v.received_at.isoformat() }}Z">{{ v.received_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
-        <span class="text-xs text-gray-500 dark:text-gray-400">{{ device.display_name if device else 'unknown' }}</span>
       </div>
-      <div class="font-mono text-xs text-gray-500 dark:text-gray-400 break-all">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
     </div>
-  </div>
-  <div class="flex gap-2 shrink-0">
-    {% if v.hash and v.hash != '' %}
-    <a href="/api/files/{{ path }}/download/{{ v.hash }}"
-       class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
-      Download
-    </a>
-    {% endif %}
-    {% if not v.is_canonical %}
-    <form method="post" action="/files/{{ path }}/revert/{{ v.id }}">
-      <button
-        class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-700"
-        onclick="return confirm('Revert {{ path | replace("'", "\\'") }} to this version? All devices will receive this version on next sync.')">
-        Revert
-      </button>
-    </form>
-    {% endif %}
+    <div class="flex gap-2 shrink-0">
+      {% if v.hash and v.hash != '' %}
+      <a href="/api/files/{{ path }}/download/{{ v.hash }}"
+         class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">
+        Download
+      </a>
+      {% endif %}
+      {% if not v.is_canonical %}
+      <form method="post" action="/files/{{ path }}/revert/{{ v.id }}">
+        <button
+          class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-700"
+          onclick="return confirm('Revert {{ path | replace("'", "\\'") }} to this version? All devices will receive this version on next sync.')">
+          Revert
+        </button>
+      </form>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endfor %}
 </div>
 {% endfor %}
 {% endif %}
+
+<script>
+function startNoteEdit(el) {
+  el.contentEditable = 'true';
+  // Hide placeholder if present
+  const placeholder = el.nextElementSibling;
+  if (placeholder && placeholder.classList.contains('note-placeholder')) {
+    placeholder.style.display = 'none';
+  }
+  el.classList.add('ring-1', 'ring-blue-400', 'dark:ring-blue-500', 'rounded', 'px-1', '-mx-1');
+  el.focus();
+  // Move cursor to end
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+}
+
+function saveNote(el) {
+  el.contentEditable = 'false';
+  el.classList.remove('ring-1', 'ring-blue-400', 'dark:ring-blue-500', 'rounded', 'px-1', '-mx-1');
+  const note = el.textContent.trim();
+  const versionId = el.dataset.versionId;
+  // Show/hide placeholder
+  const placeholder = el.nextElementSibling;
+  if (placeholder && placeholder.classList.contains('note-placeholder')) {
+    placeholder.style.display = note ? 'none' : '';
+  }
+  // Save via fetch
+  const filePath = window.location.pathname.replace(/^\/files\//, '');
+  fetch(`/files/${filePath}/note/${versionId}`, {
+    method: 'POST',
+    body: new URLSearchParams({note}),
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+  });
+}
+</script>
 {% endblock %}

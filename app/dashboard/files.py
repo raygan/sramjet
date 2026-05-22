@@ -1,9 +1,9 @@
-"""Dashboard files browser, file detail, revert, and remove routes."""
+"""Dashboard files browser, file detail, revert, pin, and remove routes."""
 
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -145,3 +145,48 @@ async def dashboard_revert_file(path: str, version_id: int, db: AsyncSession = D
 
     await db.commit()
     return RedirectResponse(url=f"/files/{path}", status_code=303)
+
+
+@router.post("/files/{path:path}/pin/{version_id}")
+async def pin_version(path: str, version_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Version).where(Version.id == version_id, Version.file_path == path)
+    )
+    version = result.scalar_one_or_none()
+    if version is None:
+        raise HTTPException(status_code=404)
+    version.is_pinned = True
+    await db.commit()
+    return RedirectResponse(url=f"/files/{path}", status_code=303)
+
+
+@router.post("/files/{path:path}/unpin/{version_id}")
+async def unpin_version(path: str, version_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Version).where(Version.id == version_id, Version.file_path == path)
+    )
+    version = result.scalar_one_or_none()
+    if version is None:
+        raise HTTPException(status_code=404)
+    version.is_pinned = False
+    version.pin_note = None
+    await db.commit()
+    return RedirectResponse(url=f"/files/{path}", status_code=303)
+
+
+@router.post("/files/{path:path}/note/{version_id}")
+async def update_pin_note(
+    path: str,
+    version_id: int,
+    note: str = Form(""),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Version).where(Version.id == version_id, Version.file_path == path)
+    )
+    version = result.scalar_one_or_none()
+    if version is None:
+        raise HTTPException(status_code=404)
+    version.pin_note = note.strip() or None
+    await db.commit()
+    return JSONResponse({"ok": True})

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.config
 from app import manifest as mf
 from app.database import get_db
-from app.models import Version
+from app.models import Device, Version
 from app.dashboard.templates import templates
 from app.dashboard.utils import (
     extract_game_name,
@@ -102,7 +102,7 @@ async def dashboard_games(
 
 
 @router.get("/games/{name:path}", response_class=HTMLResponse)
-async def dashboard_game_detail(name: str, request: Request):
+async def dashboard_game_detail(name: str, request: Request, db: AsyncSession = Depends(get_db)):
     canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
     canonical_dict = mf.to_dict(canonical)
 
@@ -141,6 +141,21 @@ async def dashboard_game_detail(name: str, request: Request):
             states_no_png.append(e)
     states_no_png.sort(key=state_slot_sort_key)
 
+    # ── Pinned versions for this game ─────────────────────────────────────────
+    pinned_result = await db.execute(
+        select(Version).where(
+            Version.is_pinned == True,  # noqa: E712
+            Version.hash != "",
+            or_(Version.file_path.like("saves/%"), Version.file_path.like("states/%")),
+        ).order_by(Version.received_at.desc())
+    )
+    pinned_items = []
+    for v in pinned_result.scalars().all():
+        gname = extract_game_name(v.file_path)
+        if gname and names_match(gname, name):
+            device = await db.get(Device, v.device_id)
+            pinned_items.append({"version": v, "device": device})
+
     base, meta = format_game_name(name)
     return templates.TemplateResponse(
         request, "game_detail.html",
@@ -148,5 +163,6 @@ async def dashboard_game_detail(name: str, request: Request):
             "name": name, "base": base, "meta": meta,
             "saves": saves, "states": states_no_png, "state_png_map": state_png_map,
             "roms": roms, "boxarts": boxarts, "snaps": snaps, "titles": titles,
+            "pinned_items": pinned_items,
         },
     )

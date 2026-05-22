@@ -28,6 +28,44 @@
   {% endif %}
 </div>
 
+{# ── Pinned ────────────────────────────────────────────────────────────────── #}
+{% if pinned_items %}
+<h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 mt-4">Pinned</h2>
+<div class="bg-white dark:bg-gray-800 rounded shadow divide-y divide-gray-200 dark:divide-gray-700">
+  {% for item in pinned_items %}
+  {% set v = item.version %}
+  <div class="px-4 py-3 flex items-start justify-between gap-4">
+    <div class="flex gap-3 items-start min-w-0">
+      <img src="/static/icons/pin-filled.png" class="h-5 w-5 mt-0.5 shrink-0" alt="pinned">
+      <div class="min-w-0">
+        {% if v.pin_note %}
+        <p class="font-medium text-sm mb-1">{{ v.pin_note }}</p>
+        {% endif %}
+        <div class="flex items-center gap-2 flex-wrap">
+          {{ slot_badge(v.file_path) }}
+          {% if v.file_path | is_save_file %}
+          <span class="text-xs text-gray-500 dark:text-gray-400">Save</span>
+          {% endif %}
+          <span class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ v.file_path | basename }}</span>
+          <span class="text-xs text-gray-400 dark:text-gray-500"
+                data-ts="{{ v.received_at.isoformat() }}Z">{{ v.received_at.strftime('%-m/%-d/%y') }}</span>
+          {% if not v.is_canonical %}
+          <span class="text-xs text-gray-400 dark:text-gray-600 italic">not current</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-2 shrink-0">
+      <a href="/api/files/{{ v.file_path }}/download/{{ v.hash }}"
+         class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded text-xs hover:bg-gray-200 dark:hover:bg-gray-600">Download</a>
+      <a href="/files/{{ v.file_path }}"
+         class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs hover:bg-blue-700">Details</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 {# ── Saves ─────────────────────────────────────────────────────────────────── #}
 {% if saves %}
 <h2 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 mt-4">Saves</h2>

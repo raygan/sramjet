@@ -284,6 +284,6 @@ async def _apply_retention(db: AsyncSession, canonical: list) -> None:
             .order_by(Version.received_at.desc())
         )
         versions = list(result.scalars().all())
-        non_canonical = [v for v in versions if not v.is_canonical]
+        non_canonical = [v for v in versions if not v.is_canonical and not v.is_pinned]
         for v in non_canonical[limit:]:
             await db.delete(v)
