@@ -258,6 +258,8 @@ def _device_out(d: Device) -> dict:
         "display_name": d.display_name,
         "first_seen": _dt(d.first_seen),
         "last_sync": _dt(d.last_sync),
+        "quarantine_saves": d.quarantine_saves,
+        "quarantine_states": d.quarantine_states,
     }
 
 
