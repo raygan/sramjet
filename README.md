@@ -9,10 +9,10 @@ A self-hosted sync server for RetroArch's Cloud Sync. Point RetroArch at SRAMjet
 ## Features
 
 **Sync backend**
-- Drop-in WebDAV target for RetroArch Cloud Sync, no client modification needed
+- Drop-in WebDAV target for RetroArch Cloud Sync, no additional client-side software needed. Works anywhere RetroArch runs.
 - Per-device routing (`/sync/{device-name}/`) with automatic device registration on first sync
-- Last-write-wins conflict resolution; uploads are always accepted with full version history kept for revert
-- Content-addressable storage; identical files are stored exactly once regardless of how many devices upload them
+- Last-write-wins conflict resolution: uploads are always accepted with full version history kept for revert
+- Content-addressable storage: identical files are stored exactly once regardless of how many devices upload them
 - Full version history with configurable retention limits per file category (saves, states, system, thumbnails)
 - File-level revert to any previous version from the dashboard
 - Per-device quarantine to isolate saves or states to a single device (useful for incompatible emulator cores)
@@ -23,7 +23,7 @@ A self-hosted sync server for RetroArch's Cloud Sync. Point RetroArch at SRAMjet
 **Pinned saves**
 - Pin any version of a save or state with an optional note (e.g. "Before final boss")
 - Pinned versions are kept indefinitely regardless of retention limits
-- Shown in a dedicated section on the game detail page with screenshots, download, and revert
+- Easily download or revert to your pinned saves from the web dashboard
 
 **Security**
 - Optional HTTP Basic auth for the web UI and WebDAV sync endpoints, configured independently via environment variables
