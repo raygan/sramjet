@@ -29,7 +29,6 @@
                 data-ts="{{ v.received_at.isoformat() }}Z">{{ v.received_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
           <span class="text-xs text-gray-500 dark:text-gray-400">{{ device.display_name if device else 'unknown' }}</span>
         </div>
-        <div class="font-mono text-xs text-gray-500 dark:text-gray-400 break-all">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
         {% if v.is_pinned %}
         <div class="relative mt-1.5 cursor-text"
              onclick="startNoteEdit(this.querySelector('.pin-note'))">
@@ -70,6 +69,7 @@
       {% endif %}
     </div>
   </div>
+  <div class="font-mono text-xs text-gray-500 dark:text-gray-400 break-all mt-1">{% if v.hash == '' %}deleted{% else %}{{ v.hash }}{% endif %}</div>
 </div>
 {% endmacro %}
 
