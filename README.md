@@ -31,6 +31,16 @@ A self-hosted sync server for RetroArch's Cloud Sync. Point RetroArch at SRAMjet
 
 ---
 
+## Screenshots
+
+<p>
+  <img src="static/screenshots/home.jpeg" width="32%">
+  <img src="static/screenshots/timeline.jpeg" width="32%">
+  <img src="static/screenshots/game-detail.jpeg" width="32%">
+</p>
+
+---
+
 ## Quick Start (Docker)
 
 Download the compose file and start the container:
