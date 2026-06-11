@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.config
 from app import manifest as mf
 from app.database import get_db
-from app.models import Device, Version
+from app.models import Device, SyncEventFile, Version
 from app.dashboard.templates import templates
 from app.dashboard.utils import (
     extract_game_name,
@@ -158,6 +158,30 @@ async def dashboard_game_detail(name: str, request: Request, db: AsyncSession = 
         if (gname := extract_game_name(v.file_path)) and names_match(gname, name)
     ]
 
+    # For each pinned state, find the PNG uploaded in the same sync event
+    pinned_png_map: dict[str, str] = {}
+    state_pinned = [p for p in pinned_items if p["version"].file_path.startswith("states/")]
+    if state_pinned:
+        pinned_state_paths = {p["version"].file_path for p in state_pinned}
+        sefs_result = await db.execute(
+            select(SyncEventFile).where(
+                SyncEventFile.file_path.in_(pinned_state_paths),
+                SyncEventFile.action == "uploaded",
+            )
+        )
+        event_to_state_hash = {sef.sync_event_id: sef.hash for sef in sefs_result.scalars().all()}
+        if event_to_state_hash:
+            png_sefs_result = await db.execute(
+                select(SyncEventFile).where(
+                    SyncEventFile.file_path.in_({p + ".png" for p in pinned_state_paths}),
+                    SyncEventFile.sync_event_id.in_(list(event_to_state_hash.keys())),
+                )
+            )
+            for psef in png_sefs_result.scalars().all():
+                state_hash = event_to_state_hash.get(psef.sync_event_id)
+                if state_hash:
+                    pinned_png_map[state_hash] = psef.hash
+
     base, meta = format_game_name(name)
     return templates.TemplateResponse(
         request, "game_detail.html",
@@ -166,5 +190,6 @@ async def dashboard_game_detail(name: str, request: Request, db: AsyncSession = 
             "saves": saves, "states": states_no_png, "state_png_map": state_png_map,
             "roms": roms, "boxarts": boxarts, "snaps": snaps, "titles": titles,
             "pinned_items": pinned_items,
+            "pinned_png_map": pinned_png_map,
         },
     )
