@@ -1,12 +1,63 @@
 {% extends "base.html" %}
 {% block title %} — Files{% endblock %}
-{% block content %}
-<div class="flex justify-between items-center mb-4">
-  <h1 class="text-2xl font-bold">Canonical File Store</h1>
-  <a href="/api/canonical.zip"
-     class="bg-gray-700 dark:bg-gray-600 text-white text-sm px-4 py-2 rounded hover:bg-gray-800 dark:hover:bg-gray-500">
-    ↓ Download all as ZIP
+
+{# ── File row macro — handles .png (no detail page) and regular entries ──── #}
+{% macro file_row(entry) %}
+{% set is_png = entry.path.endswith('.png') %}
+<div class="flex items-center hover:bg-gray-50 dark:hover:bg-gray-700{% if entry.hash == '' %} opacity-40{% endif %}">
+  {% if is_png %}
+  <div class="pl-4 py-1.5 flex grow justify-between items-center min-w-0">
+    <span class="font-mono text-xs text-gray-400 dark:text-gray-500 break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
+    <span class="font-mono text-xs text-gray-300 dark:text-gray-600 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
+  </div>
+  {% else %}
+  <a href="/files/{{ entry.path }}" class="pl-4 py-1.5 flex grow justify-between items-center min-w-0">
+    <span class="font-mono text-xs break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
+    <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
   </a>
+  {% endif %}
+  {% if entry.hash != '' %}
+  <form method="post" action="/files/delete" class="px-2 shrink-0">
+    <input type="hidden" name="path" value="{{ entry.path }}">
+    <button type="submit" title="Delete file"
+            class="text-xs text-gray-300 dark:text-gray-600 hover:text-red-600 dark:hover:text-red-400 px-1 py-1.5"
+            onclick="return confirm('Delete {{ entry.display | replace("'", "\\'") }}? It will be removed from all devices on their next sync.')">✕</button>
+  </form>
+  {% else %}
+  <span class="px-2 w-7 shrink-0"></span>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{# ── Folder delete button — lives inside <summary>, so preventDefault stops
+     the details toggle and we submit the form manually after confirm ─────── #}
+{% macro folder_delete_button(prefix, count) %}
+<form method="post" action="/files/delete-folder" class="shrink-0">
+  <input type="hidden" name="prefix" value="{{ prefix }}">
+  <button type="submit" title="Delete folder"
+          class="text-xs text-gray-300 dark:text-gray-600 hover:text-red-600 dark:hover:text-red-400 px-1"
+          onclick="event.preventDefault(); if (confirm('Delete all {{ count }} file(s) in {{ prefix | replace("'", "\\'") }}/? They will be removed from all devices on their next sync.')) this.closest('form').submit()">✕</button>
+</form>
+{% endmacro %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-4 gap-2 flex-wrap">
+  <h1 class="text-2xl font-bold">Canonical File Store</h1>
+  <div class="flex gap-2">
+    {% if trash_count %}
+    <form method="post" action="/files/empty-trash">
+      <button type="submit"
+              class="bg-red-600 text-white text-sm px-4 py-2 rounded hover:bg-red-700"
+              onclick="return confirm('Permanently remove {{ trash_count }} deleted file(s) from history and free their storage? This cannot be undone.')">
+        Empty Trash ({{ trash_count }})
+      </button>
+    </form>
+    {% endif %}
+    <a href="/api/canonical.zip"
+       class="bg-gray-700 dark:bg-gray-600 text-white text-sm px-4 py-2 rounded hover:bg-gray-800 dark:hover:bg-gray-500">
+      ↓ Download all as ZIP
+    </a>
+  </div>
 </div>
 
 {% if not dirs %}
@@ -18,7 +69,10 @@
 <details class="mb-2">
   <summary class="flex items-center justify-between bg-white dark:bg-gray-800 rounded shadow px-4 py-2.5 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-700 list-none">
     <span class="font-mono text-sm font-semibold text-gray-700 dark:text-gray-300">{{ dir.name }}/</span>
-    <span class="text-xs text-gray-400 dark:text-gray-500">{{ dir.total }} file{{ 's' if dir.total != 1 else '' }}</span>
+    <span class="flex items-center gap-3">
+      <span class="text-xs text-gray-400 dark:text-gray-500">{{ dir.total }} file{{ 's' if dir.total != 1 else '' }}</span>
+      {% if dir.live %}{{ folder_delete_button(dir.name, dir.live) }}{% endif %}
+    </span>
   </summary>
 
   <div class="ml-5 mt-1 space-y-1">
@@ -28,21 +82,14 @@
     <details>
       <summary class="flex items-center justify-between bg-white dark:bg-gray-800 rounded shadow-sm px-4 py-2 cursor-pointer select-none hover:bg-gray-50 dark:hover:bg-gray-700 list-none border-l-2 border-gray-200 dark:border-gray-600">
         <span class="font-mono text-sm text-gray-600 dark:text-gray-400">{{ sub.name }}/</span>
-        <span class="text-xs text-gray-400 dark:text-gray-500">{{ sub.entries | length }} file{{ 's' if sub.entries | length != 1 else '' }}</span>
+        <span class="flex items-center gap-3">
+          <span class="text-xs text-gray-400 dark:text-gray-500">{{ sub.entries | length }} file{{ 's' if sub.entries | length != 1 else '' }}</span>
+          {% if sub.live %}{{ folder_delete_button(dir.name ~ '/' ~ sub.name, sub.live) }}{% endif %}
+        </span>
       </summary>
       <div class="ml-5 mt-0.5 bg-white dark:bg-gray-800 rounded-sm shadow-sm border-l-2 border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
         {% for entry in sub.entries %}
-        {% if entry.path.endswith('.png') %}
-        <div class="px-4 py-1.5 flex justify-between items-center{% if entry.hash == '' %} opacity-40{% endif %}">
-          <span class="font-mono text-xs text-gray-400 dark:text-gray-500 break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
-          <span class="font-mono text-xs text-gray-300 dark:text-gray-600 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
-        </div>
-        {% else %}
-        <a href="/files/{{ entry.path }}" class="px-4 py-1.5 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700{% if entry.hash == '' %} opacity-40{% endif %}">
-          <span class="font-mono text-xs break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
-          <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
-        </a>
-        {% endif %}
+        {{ file_row(entry) }}
         {% endfor %}
       </div>
     </details>
@@ -50,17 +97,7 @@
     {# ── Files directly in top-level dir (no sub-dir) ───────────────────── #}
     <div class="bg-white dark:bg-gray-800 rounded shadow-sm border-l-2 border-gray-200 dark:border-gray-600 divide-y divide-gray-100 dark:divide-gray-700">
       {% for entry in sub.entries %}
-      {% if entry.path.endswith('.png') %}
-      <div class="px-4 py-1.5 flex justify-between items-center{% if entry.hash == '' %} opacity-40{% endif %}">
-        <span class="font-mono text-xs text-gray-400 dark:text-gray-500 break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
-        <span class="font-mono text-xs text-gray-300 dark:text-gray-600 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
-      </div>
-      {% else %}
-      <a href="/files/{{ entry.path }}" class="px-4 py-1.5 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700{% if entry.hash == '' %} opacity-40{% endif %}">
-        <span class="font-mono text-xs break-all{% if entry.hash == '' %} line-through{% endif %}">{{ entry.display }}</span>
-        <span class="font-mono text-xs text-gray-400 dark:text-gray-500 ml-4 shrink-0">{% if entry.hash == '' %}deleted{% else %}{{ entry.hash[:8] }}…{% endif %}</span>
-      </a>
-      {% endif %}
+      {{ file_row(entry) }}
       {% endfor %}
     </div>
     {% endif %}

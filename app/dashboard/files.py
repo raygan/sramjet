@@ -12,6 +12,7 @@ import app.config
 from app import manifest as mf
 from app.database import get_db
 from app.models import Device, SyncEventFile, Version
+from app.sync.purge import purge_paths, tombstone_paths, trashed_paths
 from app.dashboard.templates import templates
 
 router = APIRouter()
@@ -22,7 +23,10 @@ async def dashboard_files(request: Request):
     canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
 
     raw: dict[str, dict[str, list]] = {}
+    trash_count = 0
     for entry in canonical:
+        if mf.is_deleted(entry["hash"]):
+            trash_count += 1
         parts = entry["path"].split("/")
         top = parts[0] if len(parts) >= 2 else ""
         sub = parts[1] if len(parts) >= 3 else ""
@@ -32,13 +36,24 @@ async def dashboard_files(request: Request):
     dirs = []
     for top, subdirs in raw.items():
         total = sum(len(e) for e in subdirs.values())
+        live = sum(1 for entries in subdirs.values() for e in entries if not mf.is_deleted(e["hash"]))
         dirs.append({
             "name": top,
             "total": total,
-            "subdirs": [{"name": sub, "entries": entries} for sub, entries in subdirs.items()],
+            "live": live,
+            "subdirs": [
+                {
+                    "name": sub,
+                    "entries": entries,
+                    "live": sum(1 for e in entries if not mf.is_deleted(e["hash"])),
+                }
+                for sub, entries in subdirs.items()
+            ],
         })
 
-    return templates.TemplateResponse(request, "files.html", context={"dirs": dirs})
+    return templates.TemplateResponse(
+        request, "files.html", context={"dirs": dirs, "trash_count": trash_count}
+    )
 
 
 @router.post("/files/remove")
@@ -47,6 +62,42 @@ async def dashboard_remove_file(path: str = Form(...)):
     canonical_dict = mf.to_dict(canonical)
     canonical_dict.pop(path, None)
     mf.save_canonical(app.config.CANONICAL_MANIFEST, mf.from_dict(canonical_dict))
+    return RedirectResponse(url="/files", status_code=303)
+
+
+@router.post("/files/delete")
+async def dashboard_delete_file(path: str = Form(...), db: AsyncSession = Depends(get_db)):
+    await tombstone_paths(db, [path])
+    await db.commit()
+    return RedirectResponse(url="/files", status_code=303)
+
+
+@router.post("/files/delete-folder")
+async def dashboard_delete_folder(prefix: str = Form(...), db: AsyncSession = Depends(get_db)):
+    prefix = prefix.strip("/")
+    if not prefix:
+        raise HTTPException(status_code=400)
+    canonical = mf.load_canonical(app.config.CANONICAL_MANIFEST)
+    targets = [e["path"] for e in canonical if e["path"].startswith(prefix + "/")]
+    await tombstone_paths(db, targets)
+    await db.commit()
+    return RedirectResponse(url="/files", status_code=303)
+
+
+@router.post("/files/empty-trash")
+async def dashboard_empty_trash(db: AsyncSession = Depends(get_db)):
+    await purge_paths(db, trashed_paths())
+    await db.commit()
+    return RedirectResponse(url="/files", status_code=303)
+
+
+@router.post("/files/purge")
+async def dashboard_purge_file(path: str = Form(...), db: AsyncSession = Depends(get_db)):
+    purged, skipped = await purge_paths(db, [path])
+    await db.commit()
+    if skipped:
+        # Pinned versions block the purge — send the user back to the detail page.
+        return RedirectResponse(url=f"/files/{path}", status_code=303)
     return RedirectResponse(url="/files", status_code=303)
 
 
@@ -146,6 +197,14 @@ async def dashboard_file_detail(
         else:
             _add(t.astimezone(tz).strftime("%B %Y"), item)
 
+    canonical_hash = mf.to_dict(mf.load_canonical(app.config.CANONICAL_MANIFEST)).get(path)
+    if canonical_hash is None:
+        canonical_state = "absent"
+    elif mf.is_deleted(canonical_hash):
+        canonical_state = "deleted"
+    else:
+        canonical_state = "live"
+
     return templates.TemplateResponse(
         request, "file_detail.html",
         context={
@@ -155,6 +214,7 @@ async def dashboard_file_detail(
             "version_pngs": version_pngs,
             "page": page,
             "total_pages": total_pages,
+            "canonical_state": canonical_state,
         },
     )
 

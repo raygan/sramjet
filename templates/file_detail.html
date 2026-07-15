@@ -85,6 +85,29 @@
     {% if slot == 'Auto' %}bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400
     {% else %}bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400{% endif %}">{{ slot }}</span>
   {% endif %}
+  <div class="ml-auto shrink-0">
+    {% if canonical_state == 'live' %}
+    <form method="post" action="/files/delete">
+      <input type="hidden" name="path" value="{{ path }}">
+      <button class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-1.5 rounded text-xs hover:bg-red-200 dark:hover:bg-red-900/50"
+              onclick="return confirm('Delete {{ path | replace("'", "\\'") }}? It will be removed from all devices on their next sync.')">
+        Delete
+      </button>
+    </form>
+    {% elif canonical_state == 'deleted' %}
+      {% if pinned_versions %}
+      <span class="text-xs text-gray-400 dark:text-gray-500">Unpin all versions to purge</span>
+      {% else %}
+      <form method="post" action="/files/purge">
+        <input type="hidden" name="path" value="{{ path }}">
+        <button class="bg-red-600 text-white px-3 py-1.5 rounded text-xs hover:bg-red-700"
+                onclick="return confirm('Permanently remove {{ path | replace("'", "\\'") }} and all of its history? This cannot be undone.')">
+          Purge from history
+        </button>
+      </form>
+      {% endif %}
+    {% endif %}
+  </div>
 </div>
 
 {# ── Pinned — always visible above the fold ──────────────────────────────── #}
