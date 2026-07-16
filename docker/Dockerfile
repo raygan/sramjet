@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir \
 COPY app/ app/
 COPY templates/ templates/
 COPY static/ static/
+COPY clients/ clients/
 COPY alembic/ alembic/
 COPY alembic.ini .
 RUN pip install --no-cache-dir --no-deps .

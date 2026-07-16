@@ -51,6 +51,20 @@ WEBDAV_PASSWORD = os.environ.get("AUTH_WEBDAV_PASSWORD")
 WEBDAV_AUTH_ENABLED = bool(WEBDAV_USERNAME and WEBDAV_PASSWORD)
 
 
+def _parse_mister_cores(raw: str) -> dict[str, str]:
+    """Parse MISTER_CORES ('snes=bsnes, gba=mGBA') into {system: core dir}."""
+    out: dict[str, str] = {}
+    for pair in raw.split(","):
+        if "=" in pair:
+            system, core = pair.split("=", 1)
+            out[system.strip().lower()] = core.strip()
+    return out
+
+
+# Per-system RetroArch core folder overrides for MiSTer sync path mapping.
+MISTER_CORES = _parse_mister_cores(os.environ.get("MISTER_CORES", ""))
+
+
 def ensure_dirs() -> None:
     for d in (STORE_DIR, SNAPSHOTS_DIR, DEVICES_DIR):
         d.mkdir(parents=True, exist_ok=True)

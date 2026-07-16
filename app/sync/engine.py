@@ -90,12 +90,15 @@ async def handle_file_delete(
     sync_event.files_uploaded += 1
 
 
-async def handle_manifest_upload(
+async def complete_sync(
     db: AsyncSession,
     device: Device,
-    data: bytes,
     sync_event: SyncEvent,
-) -> None:
+) -> mf.Manifest:
+    """Finish a device's sync: promote pending versions to canonical, snapshot,
+    apply retention, and record the device's known state. Returns the new
+    canonical manifest. Shared by the WebDAV manifest PUT and the MiSTer
+    complete endpoint."""
     now = datetime.now(timezone.utc)
 
     # Promote this device's pending versions to canonical
@@ -118,11 +121,6 @@ async def handle_manifest_upload(
     new_canonical = mf.from_dict(canonical_dict)
     mf.save_canonical(app.config.CANONICAL_MANIFEST, new_canonical)
 
-    # Save device's uploaded manifest
-    device_manifest_dir = app.config.DEVICES_DIR / device.name
-    device_manifest_dir.mkdir(parents=True, exist_ok=True)
-    (device_manifest_dir / "manifest.json").write_bytes(data)
-
     # Save a canonical snapshot
     snapshot_path = app.config.SNAPSHOTS_DIR / f"{int(now.timestamp())}.json"
     snapshot_path.parent.mkdir(parents=True, exist_ok=True)
@@ -143,6 +141,21 @@ async def handle_manifest_upload(
     # Used for conflict detection on future uploads — updated on sync completion,
     # not on manifest GET, so offline changes made before fetching are detected.
     await save_last_fetched_manifest(db, device.id, new_canonical)
+    return new_canonical
+
+
+async def handle_manifest_upload(
+    db: AsyncSession,
+    device: Device,
+    data: bytes,
+    sync_event: SyncEvent,
+) -> None:
+    # Save device's uploaded manifest
+    device_manifest_dir = app.config.DEVICES_DIR / device.name
+    device_manifest_dir.mkdir(parents=True, exist_ok=True)
+    (device_manifest_dir / "manifest.json").write_bytes(data)
+
+    await complete_sync(db, device, sync_event)
 
 
 # ─── Re-upload All Files ──────────────────────────────────────────────────────

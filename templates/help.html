@@ -132,6 +132,72 @@
   </div>
 </details>
 
+{# ── MiSTer FPGA Sync ──────────────────────────────────────────────────────── #}
+<details class="bg-white dark:bg-gray-800 rounded shadow mb-3 group">
+  <summary class="px-4 py-3 cursor-pointer flex justify-between items-center list-none select-none">
+    <span class="font-semibold text-base">Syncing with a MiSTer FPGA</span>
+    <span class="text-gray-400 dark:text-gray-500 transition-transform group-open:rotate-180">⌃</span>
+  </summary>
+  <div class="px-5 pb-5 pt-3 space-y-4 text-sm text-gray-700 dark:text-gray-300 border-t border-gray-100 dark:border-gray-700">
+
+    <p>SRAMjet can sync game saves with a MiSTer FPGA. A small script runs on the MiSTer (no dependencies — MiSTer ships Python 3) and talks to this server. SRAMjet converts save formats between MiSTer cores and emulator cores automatically, so you can play a game in RetroArch, then continue on the MiSTer, and back. The MiSTer appears on the <a href="/devices" class="text-blue-600 dark:text-blue-400 hover:underline">Devices</a> page like any other device.</p>
+
+    <h3 class="font-semibold text-gray-900 dark:text-gray-100">Install</h3>
+    <ol class="list-decimal pl-5 space-y-2">
+      <li>
+        Download a pre-configured copy of the sync script:
+        <form action="/mister-client" method="get" class="flex gap-2 mt-2 items-center">
+          <input type="text" name="device" value="mister" required
+                 class="border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded px-2 py-1 font-mono text-xs w-40">
+          <button class="bg-gray-700 dark:bg-gray-600 text-white text-xs px-3 py-1.5 rounded hover:bg-gray-800 dark:hover:bg-gray-500">↓ Download sramjet_sync.py</button>
+        </form>
+        <span class="text-xs text-gray-400 dark:text-gray-500">The device name identifies this MiSTer in the dashboard.</span>
+      </li>
+      <li>Copy it to <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">/media/fat/Scripts/sramjet_sync.py</code> on the MiSTer (over SMB or SCP).</li>
+      <li>Create <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">/media/fat/Scripts/sramjet_sync.sh</code> so it shows up in the MiSTer Scripts menu:
+        <pre class="bg-gray-100 dark:bg-gray-700 rounded px-4 py-3 font-mono text-xs overflow-x-auto mt-2">#!/bin/bash
+python3 /media/fat/Scripts/sramjet_sync.py</pre>
+      </li>
+      <li>Run <strong>sramjet_sync</strong> from the MiSTer's Scripts menu after playing. Add <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">--dry-run</code> on the first run to preview what would happen.</li>
+    </ol>
+    <p class="text-xs text-gray-400 dark:text-gray-500">If WebDAV auth is enabled on this server, edit <code class="font-mono">AUTH_USER</code> / <code class="font-mono">AUTH_PASS</code> at the top of the downloaded script.</p>
+
+    <h3 class="font-semibold text-gray-900 dark:text-gray-100">Supported systems</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="text-left text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+            <th class="pb-2 pr-6 font-medium">System</th>
+            <th class="pb-2 pr-6 font-medium">MiSTer folder(s)</th>
+            <th class="pb-2 font-medium">Default RetroArch core</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+          <tr><td class="py-2 pr-6 font-medium">NES</td><td class="py-2 pr-6 font-mono text-xs">NES</td><td class="py-2">FCEUmm</td></tr>
+          <tr><td class="py-2 pr-6 font-medium">SNES</td><td class="py-2 pr-6 font-mono text-xs">SNES</td><td class="py-2">Snes9x</td></tr>
+          <tr><td class="py-2 pr-6 font-medium">Game Boy / Color</td><td class="py-2 pr-6 font-mono text-xs">GAMEBOY, GBC, SGB</td><td class="py-2">Gambatte</td></tr>
+          <tr><td class="py-2 pr-6 font-medium">Game Boy Advance</td><td class="py-2 pr-6 font-mono text-xs">GBA</td><td class="py-2">mGBA</td></tr>
+          <tr><td class="py-2 pr-6 font-medium">Genesis</td><td class="py-2 pr-6 font-mono text-xs">Genesis, MegaDrive</td><td class="py-2">Genesis Plus GX</td></tr>
+          <tr><td class="py-2 pr-6 font-medium">Master System</td><td class="py-2 pr-6 font-mono text-xs">SMS</td><td class="py-2">SMS Plus GX</td></tr>
+          <tr><td class="py-2 pr-6 font-medium">Game Gear</td><td class="py-2 pr-6 font-mono text-xs">GameGear</td><td class="py-2">Gearsystem</td></tr>
+          <tr><td class="py-2 pr-6 font-medium">PlayStation</td><td class="py-2 pr-6 font-mono text-xs">PSX</td><td class="py-2">Beetle PSX HW</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Each system syncs with <strong>one</strong> RetroArch core folder. To use different cores, set the <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">MISTER_CORES</code> environment variable on the server, e.g. <code class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">MISTER_CORES=snes=bsnes,gba=VBA-M</code>.</p>
+
+    <h3 class="font-semibold text-gray-900 dark:text-gray-100">Notes and limitations</h3>
+    <ul class="list-disc pl-5 space-y-1">
+      <li>Saves only — save states are emulator-specific and can't work on a MiSTer.</li>
+      <li>N64, Saturn, and Sega CD are not yet supported (complex multi-part save formats).</li>
+      <li>Game Boy saves are written to all three MiSTer folders (GAMEBOY, GBC, SGB) since the mapping can't tell which core a game uses. Extra copies are harmless.</li>
+      <li>On the very first sync, if a game exists on both sides with different progress, the most recently modified side wins. Make sure the MiSTer's clock is set (it syncs via NTP when networked).</li>
+      <li>Conflicts after that are resolved last-write-wins, same as RetroArch devices — history is kept, so anything can be reverted from the <a href="/files" class="text-blue-600 dark:text-blue-400 hover:underline">Files</a> page.</li>
+    </ul>
+
+  </div>
+</details>
+
 {# ── Syncing ROMs ──────────────────────────────────────────────────────────── #}
 <details class="bg-white dark:bg-gray-800 rounded shadow mb-3 group">
   <summary class="px-4 py-3 cursor-pointer flex justify-between items-center list-none select-none">

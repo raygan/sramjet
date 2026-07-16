@@ -20,6 +20,11 @@ A self-hosted sync server for RetroArch's Cloud Sync. Point RetroArch at SRAMjet
 **Dashboard**
 - A full visual interface to your saves: browse games with boxart, see version history over time, revert any file to a previous version, and monitor sync activity across devices
 
+**MiSTer FPGA sync**
+- Sync saves with a MiSTer FPGA using a single dependency-free Python script (downloadable pre-configured from the dashboard's Help page)
+- Automatic save format conversion between MiSTer cores and emulator cores (NES, SNES, GB/GBC, GBA, Genesis, SMS, Game Gear, PS1)
+- Play in RetroArch, continue on the MiSTer, and back — the MiSTer shows up as a normal device with full history
+
 **Pinned saves**
 - Pin any version of a save or state with an optional note (e.g. "Before final boss")
 - Pinned versions are kept indefinitely regardless of retention limits
